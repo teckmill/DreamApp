@@ -43,6 +43,10 @@ export default function DreamJournal() {
       console.log('Analysis result:', result); // Debug logging
       setAnalysis(result);
       setShowAnalysis(true);
+
+      // Automatically add relevant tags based on themes
+      const themeTags = result.themes.filter(theme => commonTags.includes(theme.toLowerCase()));
+      setSelectedTags(prev => [...new Set([...prev, ...themeTags])]);
     } catch (error) {
       console.error('Analysis error:', error);
     }
@@ -51,29 +55,36 @@ export default function DreamJournal() {
   const handleSave = () => {
     if (!dreamText.trim()) return;
 
-    const dreamAnalysis = dreamAnalyzer.analyzeDream(dreamText);
-    const newDream: DreamEntry = {
-      id: editingDream || Date.now().toString(),
-      userId: user.id,
-      content: dreamText,
-      tags: selectedTags,
-      date: selectedDate,
-      analysis: dreamAnalysis
-    };
+    try {
+      // Get or create analysis
+      const dreamAnalysis = analysis || dreamAnalyzer.analyzeDream(dreamText);
+      
+      const newDream: DreamEntry = {
+        id: editingDream || Date.now().toString(),
+        userId: user.id,
+        content: dreamText,
+        tags: selectedTags,
+        date: selectedDate,
+        analysis: dreamAnalysis
+      };
 
-    if (editingDream) {
-      setDreams(dreams.map(dream => 
-        dream.id === editingDream ? newDream : dream
-      ));
-      setEditingDream(null);
-    } else {
-      setDreams([newDream, ...dreams]);
+      if (editingDream) {
+        setDreams(dreams.map(dream => 
+          dream.id === editingDream ? newDream : dream
+        ));
+        setEditingDream(null);
+      } else {
+        setDreams([newDream, ...dreams]);
+      }
+
+      // Reset form
+      setDreamText('');
+      setSelectedTags([]);
+      setAnalysis(null);
+      setShowAnalysis(false);
+    } catch (error) {
+      console.error('Save error:', error);
     }
-
-    setDreamText('');
-    setSelectedTags([]);
-    setAnalysis(null);
-    setShowAnalysis(false);
   };
 
   const handleEdit = (dream: DreamEntry) => {
