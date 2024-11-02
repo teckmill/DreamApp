@@ -177,99 +177,70 @@ export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
     const textLower = text.toLowerCase();
     
-    // Detect animals and their context
-    const animals = Object.entries(ANIMALS)
-      .filter(([_, data]) => 
-        data.keywords.some(keyword => textLower.includes(keyword)))
-      .map(([animal, data]) => ({
-        type: animal,
-        symbolism: data.symbolism,
-        interpretation: data.interpretation
-      }));
-
-    // Detect actions
-    const actions = Object.entries(ACTIONS)
-      .filter(([_, data]) => 
-        data.keywords.some(keyword => textLower.includes(keyword)))
-      .map(([action, data]) => ({
-        type: action,
-        interpretation: data.interpretation,
-        sentiment: data.sentiment,
-        emotions: data.emotions
-      }));
-
-    // Calculate sentiment and emotions
-    let sentimentScore = 0;
+    // Enhanced emotion detection
     const emotions = new Set<string>();
-
-    actions.forEach(action => {
-      if (action.sentiment === 'positive') {
-        sentimentScore += 1;
-        action.emotions.forEach(emotion => emotions.add(emotion));
-      } else if (action.sentiment === 'negative') {
-        sentimentScore -= 1;
-        action.emotions.forEach(emotion => emotions.add(emotion));
+    Object.entries(EMOTIONS).forEach(([category, words]) => {
+      if (words.some(word => textLower.includes(word))) {
+        emotions.add(category);
       }
     });
 
-    // Generate comprehensive interpretation
+    // Enhanced theme detection
+    const themes = Object.entries(DREAM_THEMES)
+      .filter(([_, data]) => 
+        data.keywords.some(keyword => textLower.includes(keyword)))
+      .map(([theme, data]) => ({
+        name: theme,
+        interpretation: data.interpretation
+      }));
+
+    // Generate detailed interpretation
     let interpretation = '';
-
-    // Add animal symbolism
-    if (animals.length > 0) {
-      interpretation += animals
-        .map(animal => animal.interpretation)
-        .join(' ') + ' ';
+    if (themes.length > 0) {
+      interpretation = themes
+        .map(theme => theme.interpretation)
+        .join(' ');
+    } else {
+      interpretation = 'This dream appears to be exploring personal experiences and emotions. Consider keeping track of recurring elements for deeper insight.';
     }
 
-    // Add action interpretation
-    if (actions.length > 0) {
-      interpretation += actions
-        .map(action => action.interpretation)
-        .join(' ') + ' ';
-    }
-
-    // Add interaction context
-    if (animals.length > 1 && actions.length > 0) {
-      interpretation += `The interaction between these animals suggests ${
-        actions[0].sentiment === 'positive' 
-          ? 'a harmonious integration of different aspects of yourself.'
-          : 'internal conflicts that may need resolution.'
-      } `;
-    }
-
-    // Generate recommendations
+    // Generate personalized recommendations
     const recommendations = [
-      'Record more details about this dream in your journal',
-      'Reflect on how this dream relates to your current life situation'
+      'Record any emotions or feelings you experienced during the dream',
+      'Note any symbols or objects that stood out to you',
+      'Consider how this dream might relate to your current life situation',
+      'Look for patterns or recurring themes in your dreams'
     ];
 
-    if (animals.length > 0) {
+    // Add theme-specific recommendations
+    themes.forEach(theme => {
       recommendations.push(
-        'Consider your relationship with these animals in waking life',
-        'Reflect on what qualities of these animals resonate with you'
+        `Reflect on the ${theme.name} elements in your dream and their significance`,
+        `Consider how the ${theme.name} theme relates to your waking life`
       );
-    }
+    });
 
-    if (actions.some(a => a.sentiment === 'negative')) {
-      recommendations.push(
-        'Examine any current conflicts in your life',
-        'Consider what aspects of yourself might be in tension'
-      );
-    }
+    // Calculate sentiment
+    let sentimentScore = 0;
+    EMOTIONS.joy.forEach(word => {
+      if (textLower.includes(word)) sentimentScore += 1;
+    });
+    EMOTIONS.fear.forEach(word => {
+      if (textLower.includes(word)) sentimentScore -= 1;
+    });
+    EMOTIONS.anger.forEach(word => {
+      if (textLower.includes(word)) sentimentScore -= 1;
+    });
 
     return {
       sentiment: {
         score: sentimentScore,
-        label: sentimentScore > 0.2 ? 'positive' : 
-               sentimentScore < -0.2 ? 'negative' : 'neutral',
+        label: sentimentScore > 0 ? 'positive' : 
+               sentimentScore < 0 ? 'negative' : 'neutral',
         emotions: Array.from(emotions)
       },
-      themes: [
-        ...animals.map(a => a.type),
-        ...actions.map(a => a.type)
-      ],
-      interpretation: interpretation.trim(),
+      themes: themes.map(t => t.name),
+      interpretation,
       recommendations: Array.from(new Set(recommendations))
     };
   },
@@ -283,12 +254,15 @@ export const dreamAnalyzer = {
       water: '🌊',
       nature: '🌿',
       relationships: '💫',
-      transformation: '🦋'
+      transformation: '🦋',
+      default: '💭 ✨ 🌙'
     };
 
-    return themes
+    const themeArt = themes
       .map(theme => artElements[theme as keyof typeof artElements])
       .filter(Boolean)
-      .join(' ') || '💭';
+      .join(' ');
+
+    return themeArt || artElements.default;
   }
 }; 
