@@ -276,6 +276,12 @@ export default function AdminPanel() {
   const handleSubscriptionChange = async (userId: string, action: string) => {
     try {
       switch (action) {
+        case 'upgrade_premium':
+          await subscriptionService.upgradeTier(userId, 'premium');
+          break;
+        case 'upgrade_pro':
+          await subscriptionService.upgradeTier(userId, 'pro');
+          break;
         case 'remove_subscription':
           // Remove subscription and all rewards
           await subscriptionService.removePremium(userId);
@@ -287,7 +293,10 @@ export default function AdminPanel() {
           await rewardService.removeAllRewards(userId);
           break;
         default:
-          await subscriptionService.upgradeTier(userId, action.replace('upgrade_', '') as any);
+          const tier = action.replace('upgrade_', '');
+          if (tier === 'pro' || tier === 'premium') {
+            await subscriptionService.upgradeTier(userId, tier);
+          }
           break;
       }
       loadUsers();
@@ -850,7 +859,7 @@ export default function AdminPanel() {
                       >
                         <option value="">Manage Subscription</option>
                         <option value="upgrade_premium">Set as Premium</option>
-                        <option value="upgrade_pro">Set as Pro</option>
+                        <option value="upgrade_pro">Set as Professional</option>
                         <option value="remove_subscription">Remove All Access</option>
                         <option value="remove_rewards">Remove Rewards Only</option>
                       </select>
