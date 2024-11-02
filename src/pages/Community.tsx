@@ -77,10 +77,13 @@ export default function Community() {
       const parsedPosts = JSON.parse(savedPosts);
       return parsedPosts.map((post: any) => ({
         ...post,
-        likes: new Set(post.likes),
+        likes: new Set(Array.isArray(post.likes) ? post.likes : []),
+        saves: new Set(Array.isArray(post.saves) ? post.saves : []),
+        reports: new Set(Array.isArray(post.reports) ? post.reports : []),
         createdAt: new Date(post.createdAt),
         comments: post.comments.map((comment: any) => ({
           ...comment,
+          likes: new Set(Array.isArray(comment.likes) ? comment.likes : []),
           createdAt: new Date(comment.createdAt)
         }))
       }));
@@ -91,13 +94,16 @@ export default function Community() {
   // Save posts to localStorage whenever they change
   useEffect(() => {
     try {
-      // Convert Sets to arrays and dates to strings for JSON serialization
+      // Convert Sets to arrays for JSON serialization
       const postsToSave = posts.map(post => ({
         ...post,
         likes: Array.from(post.likes),
+        saves: Array.from(post.saves),
+        reports: Array.from(post.reports),
         createdAt: post.createdAt.toISOString(),
         comments: post.comments.map(comment => ({
           ...comment,
+          likes: Array.from(comment.likes),
           createdAt: comment.createdAt.toISOString()
         }))
       }));
