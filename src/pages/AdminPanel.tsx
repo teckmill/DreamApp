@@ -255,14 +255,18 @@ export default function AdminPanel() {
     }
   };
 
-  // Add function to handle subscription changes
+  // Enhanced subscription management function
   const handleSubscriptionChange = async (userId: string, action: string) => {
     try {
       switch (action) {
-        case 'remove_premium':
+        case 'remove_subscription':
+          // Remove subscription and all rewards
           await subscriptionService.removePremium(userId);
+          await rewardService.removeAllRewards(userId);
+          // Reset ad history
+          localStorage.removeItem(`ad_history_${userId}`);
           break;
-        case 'remove_all_rewards':
+        case 'remove_rewards':
           await rewardService.removeAllRewards(userId);
           break;
         default:
@@ -828,10 +832,10 @@ export default function AdminPanel() {
                         onChange={(e) => handleSubscriptionChange(selectedUserId, e.target.value)}
                       >
                         <option value="">Manage Subscription</option>
-                        <option value="upgrade_premium">Upgrade to Premium</option>
-                        <option value="upgrade_pro">Upgrade to Pro</option>
-                        <option value="remove_premium">Remove Premium Status</option>
-                        <option value="remove_all_rewards">Remove All Rewards</option>
+                        <option value="upgrade_premium">Set as Premium</option>
+                        <option value="upgrade_pro">Set as Pro</option>
+                        <option value="remove_subscription">Remove All Access</option>
+                        <option value="remove_rewards">Remove Rewards Only</option>
                       </select>
                     </div>
                   </div>
