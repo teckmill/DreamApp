@@ -1,6 +1,5 @@
 export interface PremiumFeatures {
   advancedAnalysis: boolean;
-  aiArtGeneration: boolean;
   unlimitedDreams: boolean;
   exportData: boolean;
   customThemes: boolean;
@@ -12,7 +11,6 @@ export const SUBSCRIPTION_TIERS = {
     adRequirement: 0,
     features: {
       advancedAnalysis: false,
-      aiArtGeneration: false,
       unlimitedDreams: true,
       exportData: false,
       customThemes: false
@@ -26,27 +24,25 @@ export const SUBSCRIPTION_TIERS = {
   },
   premium: {
     name: 'Premium',
-    adRequirement: 5, // Watch 5 ads to unlock
+    adRequirement: 5,
     features: {
       advancedAnalysis: true,
-      aiArtGeneration: false,
       unlimitedDreams: true,
       exportData: true,
       customThemes: false
     },
     limits: {
-      dreamsPerMonth: -1, // unlimited
-      analysisPerMonth: -1, // unlimited
-      communityPosts: -1 // unlimited
+      dreamsPerMonth: -1,
+      analysisPerMonth: -1,
+      communityPosts: -1
     },
     description: 'Unlock with 5 ad views'
   },
   pro: {
     name: 'Professional',
-    adRequirement: 15, // Watch 15 ads to unlock
+    adRequirement: 15,
     features: {
       advancedAnalysis: true,
-      aiArtGeneration: true,
       unlimitedDreams: true,
       exportData: true,
       customThemes: true
