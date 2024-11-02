@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, CreditCard, Loader, Play, Clock, Crown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
@@ -13,7 +13,12 @@ export default function Subscription() {
   const [showVideoAd, setShowVideoAd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const adHistory = adService.getAdHistory(user.id);
+  const [adHistory, setAdHistory] = useState(() => adService.getAdHistory(user.id));
+
+  // Add effect to refresh ad history
+  useEffect(() => {
+    setAdHistory(adService.getAdHistory(user.id));
+  }, [user.id]);
 
   const handleWatchAd = async () => {
     if (!adService.canWatchAd(user.id)) {
@@ -29,32 +34,36 @@ export default function Subscription() {
     try {
       const reward = await adService.watchAd('long');
       
-      // Add the reward
+      // Add the rewards
       await rewardService.addReward(user.id, {
         type: 'premium_time',
-        amount: 24, // 24 hours of premium time
+        amount: 24,
         source: 'ad'
       });
 
       await rewardService.addReward(user.id, {
         type: 'dream_tokens',
-        amount: 100, // Give 100 dream tokens
+        amount: 100,
         source: 'ad'
       });
 
       await rewardService.addReward(user.id, {
         type: 'analysis_credits',
-        amount: 5, // Give 5 analysis credits
+        amount: 5,
         source: 'ad'
       });
       
+      // Record the ad view
       adService.recordAdView(user.id, reward);
       
+      // Refresh ad history
+      setAdHistory(adService.getAdHistory(user.id));
+      
       // Check if user has unlocked a new tier
-      const totalAdsWatched = adHistory.totalAdsWatched + 1;
-      if (totalAdsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
+      const newAdHistory = adService.getAdHistory(user.id);
+      if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
         await subscriptionService.upgradeTier(user.id, 'pro');
-      } else if (totalAdsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
+      } else if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
         await subscriptionService.upgradeTier(user.id, 'premium');
       }
       
