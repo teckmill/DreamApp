@@ -32,13 +32,17 @@ export default function AdUnit({
     };
   }, [intervalId]);
 
-  const handleVideoComplete = () => {
+  const handleVideoComplete = async () => {
     if (intervalId) {
       clearInterval(intervalId);
     }
     setIsPlaying(false);
     setShowAd(false);
-    onComplete?.();
+    
+    // Make sure we call onComplete to trigger the subscription update
+    if (onComplete) {
+      await onComplete();
+    }
   };
 
   const startVideo = () => {

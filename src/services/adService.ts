@@ -110,11 +110,7 @@ export const adService = {
       return achievement;
     });
 
-    // Reset ad count if user has reached Pro tier
-    if (history.totalAdsWatched >= 15) {
-      history.totalAdsWatched = 0;
-    }
-
+    // Save the updated history
     localStorage.setItem(`ad_history_${userId}`, JSON.stringify(history));
   },
 

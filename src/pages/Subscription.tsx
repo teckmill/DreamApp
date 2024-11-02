@@ -32,8 +32,6 @@ export default function Subscription() {
 
   const handleVideoComplete = async () => {
     try {
-      const reward = await adService.watchAd('long');
-      
       // Add the rewards
       await rewardService.addReward(user.id, {
         type: 'premium_time',
@@ -53,7 +51,8 @@ export default function Subscription() {
         source: 'ad'
       });
       
-      // Record the ad view
+      // Record the ad view and update progress
+      const reward = await adService.watchAd('long');
       adService.recordAdView(user.id, reward);
       
       // Refresh ad history
