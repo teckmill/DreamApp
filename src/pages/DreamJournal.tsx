@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PenSquare, Calendar, Tag, Mic, Send, Brain, Trash2, X, Loader } from 'lucide-react';
+import { PenSquare, Calendar, Tag, Mic, Send, Brain, Trash2, X, Loader, Search, Filter, Star, Sparkles, BarChart } from 'lucide-react';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
@@ -14,6 +14,10 @@ interface DreamEntry {
   tags: string[];
   date: Date;
   analysis?: DreamAnalysis;
+  category: string;
+  mood: number;
+  clarity: number;
+  isRecurring: boolean;
 }
 
 export default function DreamJournal() {
@@ -26,6 +30,13 @@ export default function DreamJournal() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [showStats, setShowStats] = useState(false);
+  const [mood, setMood] = useState(3);
+  const [clarity, setClarity] = useState(3);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [category, setCategory] = useState('general');
 
   // In a real app, this would be fetched from a backend
   const [dreams, setDreams] = useState<DreamEntry[]>(() => {
@@ -82,7 +93,11 @@ export default function DreamJournal() {
         content: dreamText,
         tags: selectedTags,
         date: selectedDate,
-        analysis: dreamAnalysis
+        analysis: dreamAnalysis,
+        category: 'lucid',
+        mood: 3,
+        clarity: 3,
+        isRecurring: false
       };
 
       if (editingDream) {
@@ -161,21 +176,6 @@ export default function DreamJournal() {
     URL.revokeObjectURL(url);
   };
 
-  // Add theme selection if available
-  const [selectedTheme, setSelectedTheme] = useState('default');
-  const availableThemes = subscriptionService.hasFeature(user.id, 'customThemes')
-    ? ['default', 'cosmic', 'mystic', 'ethereal', 'dark-fantasy']
-    : ['default'];
-
-  // Add theme styles
-  const themeStyles = {
-    default: '',
-    cosmic: 'bg-gradient-to-r from-purple-900 to-indigo-900 text-white',
-    mystic: 'bg-gradient-to-r from-teal-900 to-emerald-900 text-white',
-    ethereal: 'bg-gradient-to-r from-pink-900 to-rose-900 text-white',
-    'dark-fantasy': 'bg-gradient-to-r from-gray-900 to-slate-900 text-white'
-  };
-
   const userRewards = rewardService.getUserRewards(user.id);
   const currentTier = subscriptionService.getUserSubscription(user.id);
 
@@ -183,36 +183,48 @@ export default function DreamJournal() {
   const dreamsThisMonth = subscriptionService.getUsage(user.id, 'dreamsPerMonth');
   const analysisThisMonth = subscriptionService.getUsage(user.id, 'analysisPerMonth');
 
+  const categories = [
+    'general',
+    'lucid',
+    'nightmare',
+    'adventure',
+    'spiritual',
+    'prophetic',
+    'recurring'
+  ];
+
+  const moodEmojis = ['😔', '😕', '😐', '🙂', '😊'];
+  const clarityStars = [1, 2, 3, 4, 5];
+
+  // Filter dreams
+  const filteredDreams = dreams.filter(dream => {
+    const matchesSearch = dream.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         dream.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = filterCategory === 'all' || dream.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Calculate statistics
+  const dreamStats = React.useMemo(() => {
+    return {
+      totalDreams: dreams.length,
+      averageMood: dreams.reduce((sum, dream) => sum + dream.mood, 0) / dreams.length || 0,
+      averageClarity: dreams.reduce((sum, dream) => sum + dream.clarity, 0) / dreams.length || 0,
+      categoryBreakdown: dreams.reduce((acc, dream) => {
+        acc[dream.category] = (acc[dream.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      recurringCount: dreams.filter(dream => dream.isRecurring).length,
+      monthlyCount: dreams.reduce((acc, dream) => {
+        const month = new Date(dream.date).toLocaleString('default', { month: 'long' });
+        acc[month] = (acc[month] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    };
+  }, [dreams]);
+
   return (
-    <div className={`max-w-4xl mx-auto ${themeStyles[selectedTheme as keyof typeof themeStyles]}`}>
-      {/* Add theme selector if premium */}
-      {subscriptionService.hasFeature(user.id, 'customThemes') && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Theme</label>
-          <select
-            value={selectedTheme}
-            onChange={(e) => setSelectedTheme(e.target.value)}
-            className="p-2 rounded-lg border bg-white dark:bg-gray-800"
-          >
-            {availableThemes.map(theme => (
-              <option key={theme} value={theme}>
-                {theme.charAt(0).toUpperCase() + theme.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="flex items-center space-x-4 mb-4">
-        <button
-          onClick={handleAnalyze}
-          className="inline-flex items-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800/30 transition-colors"
-        >
-          <Brain className="h-4 w-4 mr-2" />
-          Analyze Dream
-        </button>
-      </div>
-
+    <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Dream Journal</h1>
         <p className="text-gray-600 dark:text-gray-300">
@@ -365,7 +377,7 @@ export default function DreamJournal() {
       )}
 
       <div className="space-y-6">
-        {dreams.map((dream) => (
+        {filteredDreams.map((dream) => (
           <div
             key={dream.id}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
