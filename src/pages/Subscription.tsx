@@ -57,6 +57,7 @@ export default function Subscription() {
 
   const handleWatchAd = async (duration: keyof typeof AD_DURATIONS) => {
     if (!adService.canWatchAd(user.id)) {
+      setError('Please wait before watching another ad');
       return;
     }
 
@@ -66,14 +67,15 @@ export default function Subscription() {
 
   const handleVideoComplete = async () => {
     try {
-      const reward = await adService.watchAd('long'); // Always give best reward for video completion
+      const reward = await adService.watchAd('long');
+      await rewardService.addReward(user.id, {
+        ...reward,
+        source: 'ad'
+      });
+      
       adService.recordAdView(user.id, reward);
       
-      if (reward.type === 'premium_time') {
-        await paymentService.updateSubscription(user.id, 'premium');
-        setSuccess(`Earned ${reward.amount} hours of premium access!`);
-      }
-      
+      setSuccess(`Earned ${reward.amount} ${reward.type.replace('_', ' ')}!`);
       setAdCooldown(true);
       setTimeout(() => setAdCooldown(false), 3600000); // 1 hour cooldown
     } catch (error) {
@@ -225,7 +227,7 @@ export default function Subscription() {
                 disabled={isWatchingAd || adCooldown}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
                   isWatchingAd || adCooldown
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
@@ -242,7 +244,7 @@ export default function Subscription() {
                 ) : (
                   <>
                     <Play className="h-5 w-5" />
-                    <span>Watch Video for Premium</span>
+                    <span>Watch Ad</span>
                   </>
                 )}
               </button>
@@ -259,6 +261,7 @@ export default function Subscription() {
           slot="video-reward"
           isVideo={true}
           onComplete={handleVideoComplete}
+          className="fixed inset-0 z-50"
         />
       )}
     </div>
