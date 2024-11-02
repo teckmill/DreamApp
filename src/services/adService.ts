@@ -127,9 +127,9 @@ export const adService = {
     if (rewards.length === 0) return true;
 
     const lastViewedDate = new Date(rewards[rewards.length - 1].timestamp);
-    const hoursSinceLastAd = (Date.now() - lastViewedDate.getTime()) / (1000 * 60 * 60);
+    const secondsSinceLastAd = (Date.now() - lastViewedDate.getTime()) / 1000;
     
-    return hoursSinceLastAd >= 1; // One hour cooldown
+    return secondsSinceLastAd >= 10; // 10 seconds cooldown instead of 1 hour
   },
 
   getProgress(userId: string): { watched: number; achievements: any[] } {
