@@ -36,25 +36,29 @@ export default function DreamJournal() {
   }, [dreams, user.id]);
 
   const handleAnalyze = () => {
-    if (!dreamText.trim()) return;
+    if (!dreamText.trim()) {
+      console.log('No dream text to analyze');
+      return;
+    }
     
     try {
+      console.log('Starting analysis of:', dreamText); // Debug log
       const result = dreamAnalyzer.analyzeDream(dreamText);
-      console.log('Analysis result:', result); // Debug logging
+      console.log('Analysis result:', result); // Debug log
+      
+      if (!result) {
+        console.error('No analysis result returned');
+        return;
+      }
+
       setAnalysis(result);
       setShowAnalysis(true);
 
-      // Automatically add relevant tags based on themes
-      const themeTags = result.themes.filter(theme => commonTags.includes(theme.toLowerCase()));
-      setSelectedTags(prev => [...new Set([...prev, ...themeTags])]);
-
       // Scroll to analysis section
-      setTimeout(() => {
-        window.scrollTo({ 
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 100);
+      const analysisSection = document.getElementById('analysis-section');
+      if (analysisSection) {
+        analysisSection.scrollIntoView({ behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Analysis error:', error);
     }
@@ -229,7 +233,7 @@ export default function DreamJournal() {
       </div>
 
       {showAnalysis && analysis && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 mt-8">
+        <div id="analysis-section" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 mt-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             Dream Analysis
           </h2>
