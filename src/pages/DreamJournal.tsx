@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { subscriptionService } from '../services/subscriptionService';
 import { rewardService } from '../services/rewardService';
+import { aiService } from '../services/aiService';
 
 interface DreamEntry {
   id: string;
@@ -26,6 +27,7 @@ export default function DreamJournal() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dreamArt, setDreamArt] = useState<string | null>(null);
 
   // In a real app, this would be fetched from a backend
   const [dreams, setDreams] = useState<DreamEntry[]>(() => {
@@ -137,7 +139,7 @@ export default function DreamJournal() {
   // Add export functionality
   const handleExport = () => {
     if (!subscriptionService.hasFeature(user.id, 'exportData')) {
-      alert('Export is a premium feature. Watch ads or upgrade to export your dreams!');
+      alert('Export is a premium feature. Upgrade to access this feature!');
       return;
     }
 
@@ -164,8 +166,32 @@ export default function DreamJournal() {
   // Add theme selection if available
   const [selectedTheme, setSelectedTheme] = useState('default');
   const availableThemes = subscriptionService.hasFeature(user.id, 'customThemes')
-    ? ['default', 'dark', 'light', 'cosmic', 'mystic']
+    ? ['default', 'cosmic', 'mystic', 'ethereal', 'dark-fantasy']
     : ['default'];
+
+  // Add theme styles
+  const themeStyles = {
+    default: '',
+    cosmic: 'bg-gradient-to-r from-purple-900 to-indigo-900 text-white',
+    mystic: 'bg-gradient-to-r from-teal-900 to-emerald-900 text-white',
+    ethereal: 'bg-gradient-to-r from-pink-900 to-rose-900 text-white',
+    'dark-fantasy': 'bg-gradient-to-r from-gray-900 to-slate-900 text-white'
+  };
+
+  // Add art generation
+  const generateArt = async () => {
+    if (!subscriptionService.hasFeature(user.id, 'aiArtGeneration')) {
+      alert('AI Art Generation is a premium feature. Upgrade to access this feature!');
+      return;
+    }
+
+    try {
+      const artUrl = await aiService.generateDreamArt(dreamText);
+      setDreamArt(artUrl);
+    } catch (error) {
+      console.error('Error generating art:', error);
+    }
+  };
 
   const userRewards = rewardService.getUserRewards(user.id);
   const currentTier = subscriptionService.getUserSubscription(user.id);
@@ -175,7 +201,52 @@ export default function DreamJournal() {
   const analysisThisMonth = subscriptionService.getUsage(user.id, 'analysisPerMonth');
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={`max-w-4xl mx-auto ${themeStyles[selectedTheme as keyof typeof themeStyles]}`}>
+      {/* Add theme selector if premium */}
+      {subscriptionService.hasFeature(user.id, 'customThemes') && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Theme</label>
+          <select
+            value={selectedTheme}
+            onChange={(e) => setSelectedTheme(e.target.value)}
+            className="p-2 rounded-lg border bg-white dark:bg-gray-800"
+          >
+            {availableThemes.map(theme => (
+              <option key={theme} value={theme}>
+                {theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Add AI Art Generation button */}
+      {currentTier.features.aiArtGeneration && (
+        <button
+          onClick={generateArt}
+          className="ml-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+        >
+          Generate Dream Art
+        </button>
+      )}
+
+      {/* Display generated art */}
+      {dreamArt && (
+        <div className="mt-4">
+          <img src={dreamArt} alt="AI Generated Dream Art" className="rounded-lg max-w-full" />
+        </div>
+      )}
+
+      {/* Add Export button */}
+      {currentTier.features.exportData && (
+        <button
+          onClick={handleExport}
+          className="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+        >
+          Export Dreams
+        </button>
+      )}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Dream Journal</h1>
         <p className="text-gray-600 dark:text-gray-300">

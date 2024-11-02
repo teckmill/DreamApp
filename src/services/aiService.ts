@@ -56,5 +56,16 @@ export const aiService = {
     // In a real app, you'd store and compare embeddings in a vector database
     // This is a simplified version
     return communityDreams.slice(0, 3);
+  },
+
+  async generateDreamArt(dreamText: string): Promise<string> {
+    // For demo purposes, return a placeholder image
+    const artStyles = [
+      'https://source.unsplash.com/random/400x400/?dream',
+      'https://source.unsplash.com/random/400x400/?fantasy',
+      'https://source.unsplash.com/random/400x400/?surreal'
+    ];
+    
+    return artStyles[Math.floor(Math.random() * artStyles.length)];
   }
 }; 
