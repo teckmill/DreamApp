@@ -46,10 +46,10 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      // Close after a very short delay
+      // Close almost immediately after completion
       setTimeout(() => {
         setShowAd(false);
-      }, 300); // Just 300ms to show completion state
+      }, 100); // Just enough time to show the completion checkmark
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
@@ -125,13 +125,7 @@ export default function AdUnit({
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
                 {isPlaying ? 'Watching video...' : 
-                 isProcessing ? (
-                   <>
-                     Processing reward...
-                     <br />
-                     <span className="text-xs italic">Please wait while we process your reward. Window will close automatically.</span>
-                   </>
-                 ) : 
+                 isProcessing ? 'Processing...' : 
                  isCompleted ? 'Complete!' : 
                  'Ready to watch'}
               </p>
