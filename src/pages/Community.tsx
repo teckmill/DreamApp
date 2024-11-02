@@ -81,7 +81,7 @@ export default function Community() {
         saves: new Set(Array.isArray(post.saves) ? post.saves : []),
         reports: new Set(Array.isArray(post.reports) ? post.reports : []),
         createdAt: new Date(post.createdAt),
-        comments: post.comments.map((comment: any) => ({
+        comments: (post.comments || []).map((comment: any) => ({
           ...comment,
           likes: new Set(Array.isArray(comment.likes) ? comment.likes : []),
           createdAt: new Date(comment.createdAt)
@@ -93,24 +93,19 @@ export default function Community() {
 
   // Save posts to localStorage whenever they change
   useEffect(() => {
-    try {
-      // Convert Sets to arrays for JSON serialization
-      const postsToSave = posts.map(post => ({
-        ...post,
-        likes: Array.from(post.likes),
-        saves: Array.from(post.saves),
-        reports: Array.from(post.reports),
-        createdAt: post.createdAt.toISOString(),
-        comments: post.comments.map(comment => ({
-          ...comment,
-          likes: Array.from(comment.likes),
-          createdAt: comment.createdAt.toISOString()
-        }))
-      }));
-      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(postsToSave));
-    } catch (error) {
-      console.error('Error saving posts:', error);
-    }
+    const postsToSave = posts.map(post => ({
+      ...post,
+      likes: Array.from(post.likes),
+      saves: Array.from(post.saves),
+      reports: Array.from(post.reports),
+      createdAt: post.createdAt.toISOString(),
+      comments: post.comments.map(comment => ({
+        ...comment,
+        likes: Array.from(comment.likes),
+        createdAt: comment.createdAt.toISOString()
+      }))
+    }));
+    localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(postsToSave));
   }, [posts]);
 
   // Calculate trending tags
@@ -165,7 +160,7 @@ export default function Community() {
     );
   };
 
-  // Enhanced post submission
+  // Enhanced post submission with credit check
   const handlePostSubmit = async () => {
     if (!newPost.trim()) return;
 
@@ -175,7 +170,17 @@ export default function Community() {
     }
 
     try {
+      // Check if user has analysis credits
+      if (!rewardService.canUseAnalysis(user.id)) {
+        alert('You need analysis credits to create a post. Watch ads or upgrade to get more credits!');
+        return;
+      }
+
       const analysis = dreamAnalyzer.analyzeDream(newPost);
+      
+      // Use an analysis credit
+      rewardService.useAnalysisCredit(user.id);
+
       const newDreamPost: DreamPost = {
         id: Date.now().toString(),
         userId: user.id,

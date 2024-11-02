@@ -52,17 +52,19 @@ export default function DreamJournal() {
   const handleAnalyze = () => {
     if (!dreamText.trim()) return;
 
-    // Check analysis limit
-    if (!subscriptionService.checkLimit(user.id, 'analysisPerMonth')) {
-      alert('You have reached your monthly analysis limit. Watch ads or upgrade to analyze more dreams!');
+    // Check if user has analysis credits or premium time
+    if (!rewardService.canUseAnalysis(user.id)) {
+      alert('You need analysis credits to analyze dreams. Watch ads or upgrade to get more credits!');
       return;
     }
-    
+
     try {
       const result = dreamAnalyzer.analyzeDream(dreamText);
       setAnalysis(result);
       setShowAnalysis(true);
-      subscriptionService.incrementUsage(user.id, 'analysisPerMonth');
+      
+      // Use an analysis credit (premium users don't use credits)
+      rewardService.useAnalysisCredit(user.id);
 
       // Scroll to analysis section
       const analysisSection = document.getElementById('analysis-section');
