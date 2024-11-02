@@ -168,7 +168,7 @@ export const dreamAnalyzer = {
       const intensity = this.determineChaseIntensity(text);
       const interpretation = CONTEXT_PATTERNS.chase.interpretation[intensity];
       themes.push('pursuit');
-      if (!interpretation.includes(interpretation)) {
+      if (!symbols.some(s => s.symbol === 'chase')) {
         symbols.push({
           symbol: 'chase',
           meaning: 'Avoidance or confrontation of issues',
