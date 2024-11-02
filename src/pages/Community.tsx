@@ -372,6 +372,8 @@ export default function Community() {
 
   // Add save edit handler
   const handleSaveEdit = (postId: string) => {
+    const analysis = dreamAnalyzer.analyzeDream(editedContent);
+    
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return {
@@ -379,7 +381,10 @@ export default function Community() {
           content: editedContent,
           tags: selectedTags,
           category: selectedCategory,
-          analysis: dreamAnalyzer.analyzeDream(editedContent)
+          analysis: {
+            themes: analysis.themes,
+            sentiment: analysis.sentiment.label
+          }
         };
       }
       return post;
