@@ -1,3 +1,5 @@
+import { rewardService } from './rewardService';
+
 export interface PremiumFeatures {
   advancedAnalysis: boolean;
   unlimitedDreams: boolean;
