@@ -46,10 +46,10 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      // Show completion state for 5 seconds then close
+      // Close after a very short delay
       setTimeout(() => {
         setShowAd(false);
-      }, 5000);
+      }, 300); // Just 300ms to show completion state
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
@@ -65,7 +65,7 @@ export default function AdUnit({
     setIsPlaying(true);
     const interval = setInterval(() => {
       setVideoProgress(prev => {
-        const newProgress = prev + 2;
+        const newProgress = prev + 4; // Faster progress (4% instead of 2%)
         if (newProgress >= 100) {
           clearInterval(interval);
           handleVideoComplete();
@@ -73,7 +73,7 @@ export default function AdUnit({
         }
         return newProgress;
       });
-    }, 50);
+    }, 25); // Much faster interval (25ms instead of 50ms)
     setIntervalId(interval);
   };
 
