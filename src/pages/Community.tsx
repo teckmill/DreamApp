@@ -75,6 +75,12 @@ export default function Community() {
   const handlePostSubmit = () => {
     if (!newPost.trim()) return;
 
+    // Check post limit
+    if (!subscriptionService.checkLimit(user.id, 'communityPosts')) {
+      alert('You have reached your monthly post limit. Watch ads or upgrade to post more!');
+      return;
+    }
+
     try {
       const analysis = dreamAnalyzer.analyzeDream(newPost);
       const newDreamPost: DreamPost = {
@@ -95,6 +101,7 @@ export default function Community() {
       setPosts(prevPosts => [newDreamPost, ...prevPosts]);
       setNewPost('');
       setSelectedTags([]);
+      subscriptionService.incrementUsage(user.id, 'communityPosts');
     } catch (error) {
       console.error('Error creating post:', error);
     }

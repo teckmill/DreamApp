@@ -36,23 +36,19 @@ export default function DreamJournal() {
   }, [dreams, user.id]);
 
   const handleAnalyze = () => {
-    if (!dreamText.trim()) {
-      console.log('No dream text to analyze');
+    if (!dreamText.trim()) return;
+
+    // Check analysis limit
+    if (!subscriptionService.checkLimit(user.id, 'analysisPerMonth')) {
+      alert('You have reached your monthly analysis limit. Watch ads or upgrade to analyze more dreams!');
       return;
     }
     
     try {
-      console.log('Starting analysis of:', dreamText); // Debug log
       const result = dreamAnalyzer.analyzeDream(dreamText);
-      console.log('Analysis result:', result); // Debug log
-      
-      if (!result) {
-        console.error('No analysis result returned');
-        return;
-      }
-
       setAnalysis(result);
       setShowAnalysis(true);
+      subscriptionService.incrementUsage(user.id, 'analysisPerMonth');
 
       // Scroll to analysis section
       const analysisSection = document.getElementById('analysis-section');
@@ -66,6 +62,12 @@ export default function DreamJournal() {
 
   const handleSave = () => {
     if (!dreamText.trim()) return;
+
+    // Check dream storage limit
+    if (!subscriptionService.checkLimit(user.id, 'dreamsPerMonth')) {
+      alert('You have reached your monthly dream storage limit. Watch ads or upgrade to store more dreams!');
+      return;
+    }
 
     try {
       // Get or create analysis
@@ -87,6 +89,7 @@ export default function DreamJournal() {
         setEditingDream(null);
       } else {
         setDreams([newDream, ...dreams]);
+        subscriptionService.incrementUsage(user.id, 'dreamsPerMonth');
       }
 
       // Reset form
@@ -127,6 +130,39 @@ export default function DreamJournal() {
     setSelectedDate(date);
     setShowDatePicker(false);
   };
+
+  // Add export functionality
+  const handleExport = () => {
+    if (!subscriptionService.hasFeature(user.id, 'exportData')) {
+      alert('Export is a premium feature. Watch ads or upgrade to export your dreams!');
+      return;
+    }
+
+    const exportData = {
+      dreams,
+      exportDate: new Date().toISOString(),
+      user: {
+        username: user.username,
+        id: user.id
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dreamscape-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Add theme selection if available
+  const [selectedTheme, setSelectedTheme] = useState('default');
+  const availableThemes = subscriptionService.hasFeature(user.id, 'customThemes')
+    ? ['default', 'dark', 'light', 'cosmic', 'mystic']
+    : ['default'];
 
   return (
     <div className="max-w-4xl mx-auto">
