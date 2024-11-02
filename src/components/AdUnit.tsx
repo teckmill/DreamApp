@@ -123,7 +123,13 @@ export default function AdUnit({
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
                 {isPlaying ? 'Watching video...' : 
-                 isProcessing ? 'Processing reward...' : 
+                 isProcessing ? (
+                   <>
+                     Processing reward...
+                     <br />
+                     <span className="text-xs italic">Please be patient while we process your reward</span>
+                   </>
+                 ) : 
                  isCompleted ? 'Complete!' : 
                  'Ready to watch'}
               </p>
