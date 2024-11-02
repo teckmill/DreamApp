@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, Menu, BookMarked, Users, User } from 'lucide-react';
+import { Moon, Sun, Menu, BookMarked, Users, User, Sparkles } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,6 +17,7 @@ export default function Navbar() {
           { path: '/journal', label: 'Journal', icon: BookMarked },
           { path: '/community', label: 'Community', icon: Users },
           { path: '/profile', label: 'Profile', icon: User },
+          { path: '/subscription', label: 'Premium', icon: Sparkles },
         ]
       : []),
   ];

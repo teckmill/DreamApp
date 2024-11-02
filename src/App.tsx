@@ -11,6 +11,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
+import Subscription from './pages/Subscription';
 
 function App() {
   return (
@@ -37,6 +38,11 @@ function App() {
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/subscription" element={
+                  <ProtectedRoute>
+                    <Subscription />
                   </ProtectedRoute>
                 } />
               </Routes>
