@@ -19,6 +19,16 @@ interface SystemStats {
   totalRewards: number;
 }
 
+interface ReportedContent {
+  id: string;
+  type: 'post' | 'comment';
+  content: string;
+  reportedBy: string;
+  reportedAt: Date;
+  originalContent: any;
+  reason?: string;
+}
+
 export default function AdminPanel() {
   const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'reports' | 'settings' | 'content' | 'rewards'>('overview');
@@ -38,7 +48,16 @@ export default function AdminPanel() {
   const [userFilter, setUserFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [reportedContent, setReportedContent] = useState<any[]>([]);
+  const [reportedContent, setReportedContent] = useState<ReportedContent[]>(() => {
+    const reports = localStorage.getItem('dreamscape_reported_content');
+    if (reports) {
+      return JSON.parse(reports).map((report: any) => ({
+        ...report,
+        reportedAt: new Date(report.reportedAt)
+      }));
+    }
+    return [];
+  });
   const [systemSettings, setSystemSettings] = useState({
     allowNewRegistrations: true,
     maintenanceMode: false,
@@ -58,6 +77,23 @@ export default function AdminPanel() {
 
   useEffect(() => {
     loadUsers();
+  }, []);
+
+  useEffect(() => {
+    const loadReports = () => {
+      const reports = localStorage.getItem('dreamscape_reported_content');
+      if (reports) {
+        setReportedContent(JSON.parse(reports).map((report: any) => ({
+          ...report,
+          reportedAt: new Date(report.reportedAt)
+        })));
+      }
+    };
+
+    loadReports();
+    // Refresh reports every minute
+    const interval = setInterval(loadReports, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadStats = async () => {
@@ -154,7 +190,29 @@ export default function AdminPanel() {
 
   // Content Management Functions
   const handleContentAction = (contentId: string, action: 'approve' | 'reject' | 'delete') => {
-    // Implement content moderation actions
+    try {
+      const report = reportedContent.find(r => r.id === contentId);
+      if (!report) return;
+
+      if (action === 'delete') {
+        // Remove the original content
+        if (report.type === 'post') {
+          const posts = JSON.parse(localStorage.getItem('dreamscape_community_posts') || '[]');
+          const updatedPosts = posts.filter((post: any) => post.id !== report.originalContent.id);
+          localStorage.setItem('dreamscape_community_posts', JSON.stringify(updatedPosts));
+        }
+      }
+
+      // Remove the report
+      const updatedReports = reportedContent.filter(r => r.id !== contentId);
+      setReportedContent(updatedReports);
+      localStorage.setItem('dreamscape_reported_content', JSON.stringify(updatedReports));
+
+      setSuccess(`Content ${action === 'approve' ? 'approved' : 'removed'} successfully`);
+    } catch (error) {
+      setError('Failed to process content action');
+      console.error('Content action error:', error);
+    }
   };
 
   // System Settings Functions
@@ -504,27 +562,65 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Reports and Flags */}
+      {/* Reports Tab */}
       {activeTab === 'reports' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
           <div className="space-y-4">
-            {/* Add sample reported content */}
-            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div className="flex flex-col sm:flex-row justify-between gap-4">
-                <div>
-                  <h3 className="font-medium">Reported Post</h3>
-                  <p className="text-sm text-gray-500">Sample content...</p>
+            <h3 className="text-lg font-semibold mb-4">Reported Content</h3>
+            {reportedContent.length > 0 ? (
+              reportedContent.map((content) => (
+                <div key={content.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="flex justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          content.type === 'post' 
+                            ? 'bg-red-100 text-red-600' 
+                            : 'bg-orange-100 text-orange-600'
+                        }`}>
+                          {content.type}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          Reported {new Date(content.reportedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="font-medium text-gray-900 dark:text-white mb-1">
+                        Content:
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                        {content.content}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Reported by: {content.reportedBy}
+                      </p>
+                      {content.reason && (
+                        <p className="text-xs text-gray-500">
+                          Reason: {content.reason}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleContentAction(content.id, 'approve')}
+                        className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleContentAction(content.id, 'delete')}
+                        className="px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1 bg-green-100 text-green-600 rounded-lg">
-                    Approve
-                  </button>
-                  <button className="px-3 py-1 bg-red-100 text-red-600 rounded-lg">
-                    Remove
-                  </button>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No reported content to review
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
