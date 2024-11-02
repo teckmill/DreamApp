@@ -4,6 +4,19 @@ import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
 import { paymentService } from '../services/paymentService';
 import { adService } from '../services/adService';
+import { rewardService } from '../services/rewardService';
+
+const AD_DURATIONS = {
+  short: { seconds: 15, multiplier: 1 },
+  medium: { seconds: 30, multiplier: 2.5 },
+  long: { seconds: 60, multiplier: 5 }
+};
+
+const AD_ACHIEVEMENTS = [
+  { name: 'Ad Novice', requirement: 5, reward: { type: 'dream_tokens', amount: 50 } },
+  { name: 'Ad Explorer', requirement: 20, reward: { type: 'premium_time', amount: 48 } },
+  { name: 'Ad Master', requirement: 50, reward: { type: 'theme_unlock', amount: 1 } },
+];
 
 export default function Subscription() {
   const { user } = useAuth();
