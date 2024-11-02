@@ -62,23 +62,30 @@ export default function AdminPanel() {
 
       const allPosts = JSON.parse(localStorage.getItem('dreamscape_community_posts') || '[]').length;
 
+      // Calculate total ads and rewards
       const totalAds = users.reduce((acc: number, u: any) => {
         const adHistory = adService.getAdHistory(u.id);
         return acc + adHistory.totalAdsWatched;
+      }, 0);
+
+      // Calculate total rewards given
+      const totalRewards = users.reduce((acc: number, u: any) => {
+        const adHistory = adService.getAdHistory(u.id);
+        return acc + (adHistory.rewards?.length || 0);
       }, 0);
 
       setUserStats({
         totalUsers: users.length,
         premiumUsers: premiumCount,
         proUsers: proCount,
-        activeToday: users.length // In a real app, track actual active users
+        activeToday: users.length
       });
 
       setSystemStats({
         totalDreams: allDreams,
         totalPosts: allPosts,
         totalAdsWatched: totalAds,
-        totalRewards: 0 // In a real app, track actual rewards
+        totalRewards: totalRewards
       });
     } catch (error) {
       console.error('Error loading stats:', error);
