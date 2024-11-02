@@ -7,6 +7,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateProfile: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,8 +48,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
   };
 
+  const updateProfile = async (updates: Partial<User>) => {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) throw new Error('No user logged in');
+      
+      const updatedUser = { ...currentUser, ...updates };
+      const users = authService.getUsers();
+      const updatedUsers = users.map(u => 
+        u.id === currentUser.id ? updatedUser : u
+      );
+      
+      authService.saveUsers(updatedUsers);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
