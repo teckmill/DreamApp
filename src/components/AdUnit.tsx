@@ -22,6 +22,7 @@ export default function AdUnit({
   const [videoProgress, setVideoProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -37,30 +38,35 @@ export default function AdUnit({
       setIntervalId(null);
     }
     setIsPlaying(false);
-    setShowAd(false);
+    setIsCompleted(true);
     
     try {
       if (onComplete) {
         await onComplete();
       }
+      setShowAd(false);
     } catch (error) {
       console.error('Error completing ad:', error);
+      // Keep the ad visible if there's an error
+      setIsCompleted(false);
+      setVideoProgress(0);
     }
   };
 
   const startVideo = () => {
-    if (isPlaying) return; // Prevent multiple starts
+    if (isPlaying || isCompleted) return;
     
     setIsPlaying(true);
     const interval = setInterval(() => {
       setVideoProgress(prev => {
-        if (prev >= 100) {
+        const newProgress = prev + 2;
+        if (newProgress >= 100) {
           handleVideoComplete();
           return 100;
         }
-        return prev + 2;
+        return newProgress;
       });
-    }, 100); // Faster for testing, adjust as needed
+    }, 100);
     setIntervalId(interval);
   };
 
@@ -83,7 +89,7 @@ export default function AdUnit({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Watch Video for Premium Access
             </h3>
-            {!isPlaying && (
+            {!isPlaying && !isCompleted && (
               <button 
                 onClick={handleClose}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -109,10 +115,12 @@ export default function AdUnit({
                 />
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-                {isPlaying ? 'Watching video...' : videoProgress === 100 ? 'Complete!' : 'Ready to watch'}
+                {isPlaying ? 'Watching video...' : 
+                 isCompleted ? 'Complete!' : 
+                 'Ready to watch'}
               </p>
             </div>
-            {!isPlaying && videoProgress < 100 && (
+            {!isPlaying && !isCompleted && (
               <button
                 onClick={startVideo}
                 className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
