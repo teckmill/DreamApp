@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -17,7 +17,7 @@ export default function Navbar() {
           { path: '/journal', label: 'Journal', icon: BookMarked },
           { path: '/community', label: 'Community', icon: Users },
           { path: '/profile', label: 'Profile', icon: User },
-          ...(user.email === 'teckmillion17' ? [
+          ...(user?.email === 'teckmillion17' ? [
             { path: '/admin', label: 'Admin', icon: Settings }
           ] : [])
         ]
