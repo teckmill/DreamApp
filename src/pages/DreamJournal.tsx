@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PenSquare, Calendar, Tag, Mic, Send, Sparkles, Brain, Trash2, X } from 'lucide-react';
+import { PenSquare, Calendar, Tag, Mic, Send, Sparkles, Brain, Trash2, X, Loader } from 'lucide-react';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
@@ -28,6 +28,7 @@ export default function DreamJournal() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dreamArt, setDreamArt] = useState<string | null>(null);
+  const [isGeneratingArt, setIsGeneratingArt] = useState(false);
 
   // In a real app, this would be fetched from a backend
   const [dreams, setDreams] = useState<DreamEntry[]>(() => {
@@ -181,15 +182,19 @@ export default function DreamJournal() {
   // Add art generation
   const generateArt = async () => {
     if (!subscriptionService.hasFeature(user.id, 'aiArtGeneration')) {
-      alert('AI Art Generation is a premium feature. Upgrade to access this feature!');
+      alert('AI Art Generation is a premium feature. Watch ads or upgrade to access this feature!');
       return;
     }
 
     try {
+      setIsGeneratingArt(true);
       const artUrl = await aiService.generateDreamArt(dreamText);
       setDreamArt(artUrl);
     } catch (error) {
       console.error('Error generating art:', error);
+      alert('Failed to generate art. Please try again.');
+    } finally {
+      setIsGeneratingArt(false);
     }
   };
 
@@ -220,31 +225,55 @@ export default function DreamJournal() {
         </div>
       )}
 
-      {/* Add AI Art Generation button */}
-      {currentTier.features.aiArtGeneration && (
+      <div className="flex items-center space-x-4 mb-4">
         <button
-          onClick={generateArt}
-          className="ml-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          onClick={handleAnalyze}
+          className="inline-flex items-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800/30 transition-colors"
         >
-          Generate Dream Art
+          <Brain className="h-4 w-4 mr-2" />
+          Analyze Dream
         </button>
-      )}
+
+        {/* Add prominent AI Art Generation button */}
+        {subscriptionService.hasFeature(user.id, 'aiArtGeneration') && (
+          <button
+            onClick={generateArt}
+            disabled={isGeneratingArt || !dreamText.trim()}
+            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isGeneratingArt ? (
+              <>
+                <Loader className="h-4 w-4 mr-2 animate-spin" />
+                Generating Art...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Dream Art
+              </>
+            )}
+          </button>
+        )}
+      </div>
 
       {/* Display generated art */}
       {dreamArt && (
-        <div className="mt-4">
-          <img src={dreamArt} alt="AI Generated Dream Art" className="rounded-lg max-w-full" />
+        <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+            AI Generated Dream Art
+          </h3>
+          <img 
+            src={dreamArt} 
+            alt="AI Generated Dream Art" 
+            className="w-full rounded-lg shadow-md"
+          />
+          <button
+            onClick={() => setDreamArt(null)}
+            className="mt-4 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
-
-      {/* Add Export button */}
-      {currentTier.features.exportData && (
-        <button
-          onClick={handleExport}
-          className="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-        >
-          Export Dreams
-        </button>
       )}
 
       <div className="mb-8">
