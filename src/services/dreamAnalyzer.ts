@@ -157,10 +157,25 @@ const RELATIONSHIPS = {
   }
 };
 
+// Add action recognition
+const ACTIONS = {
+  'fighting': {
+    keywords: ['fight', 'fighting', 'fought', 'battle', 'conflict', 'attacking', 'attacked'],
+    sentiment: 'negative',
+    interpretation: 'Conflict or aggression in dreams often represents internal struggles or unresolved tensions.',
+    emotions: ['tension', 'anger', 'conflict']
+  },
+  'playing': {
+    keywords: ['play', 'playing', 'played', 'fun', 'friendly', 'together'],
+    sentiment: 'positive',
+    interpretation: 'Playful interaction suggests harmony and positive relationships in your life.',
+    emotions: ['joy', 'peace']
+  }
+};
+
 export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
     const textLower = text.toLowerCase();
-    const words = textLower.split(/\s+/);
     
     // Detect animals and their context
     const animals = Object.entries(ANIMALS)
@@ -172,46 +187,28 @@ export const dreamAnalyzer = {
         interpretation: data.interpretation
       }));
 
-    // Detect activities
-    const activities = Object.entries(ACTIVITIES)
+    // Detect actions
+    const actions = Object.entries(ACTIONS)
       .filter(([_, data]) => 
         data.keywords.some(keyword => textLower.includes(keyword)))
-      .map(([activity, data]) => ({
-        type: activity,
+      .map(([action, data]) => ({
+        type: action,
         interpretation: data.interpretation,
-        sentiment: data.sentiment
+        sentiment: data.sentiment,
+        emotions: data.emotions
       }));
 
-    // Detect relationships
-    const relationships = Object.entries(RELATIONSHIPS)
-      .filter(([_, data]) => 
-        data.keywords.some(keyword => textLower.includes(keyword)))
-      .map(([type, data]) => ({
-        type,
-        interpretation: data.interpretation
-      }));
-
-    // Calculate sentiment based on activities and relationships
+    // Calculate sentiment and emotions
     let sentimentScore = 0;
     const emotions = new Set<string>();
 
-    activities.forEach(activity => {
-      if (activity.sentiment === 'positive') {
+    actions.forEach(action => {
+      if (action.sentiment === 'positive') {
         sentimentScore += 1;
-        emotions.add('joy');
-      } else if (activity.sentiment === 'negative') {
+        action.emotions.forEach(emotion => emotions.add(emotion));
+      } else if (action.sentiment === 'negative') {
         sentimentScore -= 1;
-        emotions.add('tension');
-      }
-    });
-
-    relationships.forEach(rel => {
-      if (rel.type === 'harmony') {
-        sentimentScore += 1;
-        emotions.add('peace');
-      } else if (rel.type === 'conflict') {
-        sentimentScore -= 1;
-        emotions.add('conflict');
+        action.emotions.forEach(emotion => emotions.add(emotion));
       }
     });
 
@@ -225,27 +222,28 @@ export const dreamAnalyzer = {
         .join(' ') + ' ';
     }
 
-    // Add activity interpretation
-    if (activities.length > 0) {
-      interpretation += activities
-        .map(activity => activity.interpretation)
+    // Add action interpretation
+    if (actions.length > 0) {
+      interpretation += actions
+        .map(action => action.interpretation)
         .join(' ') + ' ';
     }
 
-    // Add relationship dynamics
-    if (relationships.length > 0) {
-      interpretation += relationships
-        .map(rel => rel.interpretation)
-        .join(' ') + ' ';
+    // Add interaction context
+    if (animals.length > 1 && actions.length > 0) {
+      interpretation += `The interaction between these animals suggests ${
+        actions[0].sentiment === 'positive' 
+          ? 'a harmonious integration of different aspects of yourself.'
+          : 'internal conflicts that may need resolution.'
+      } `;
     }
 
-    // Generate specific recommendations
+    // Generate recommendations
     const recommendations = [
       'Record more details about this dream in your journal',
       'Reflect on how this dream relates to your current life situation'
     ];
 
-    // Add context-specific recommendations
     if (animals.length > 0) {
       recommendations.push(
         'Consider your relationship with these animals in waking life',
@@ -253,34 +251,26 @@ export const dreamAnalyzer = {
       );
     }
 
-    if (activities.length > 0) {
+    if (actions.some(a => a.sentiment === 'negative')) {
       recommendations.push(
-        `Consider how the ${activities.map(a => a.type).join('/')} activities reflect your current life situation`,
-        'Think about how these activities make you feel in both dreams and waking life'
-      );
-    }
-
-    if (relationships.length > 0) {
-      recommendations.push(
-        'Examine the relationship dynamics in your waking life',
-        'Consider how these dream interactions mirror your real relationships'
+        'Examine any current conflicts in your life',
+        'Consider what aspects of yourself might be in tension'
       );
     }
 
     return {
       sentiment: {
-        score: sentimentScore / (activities.length + relationships.length || 1),
+        score: sentimentScore,
         label: sentimentScore > 0.2 ? 'positive' : 
                sentimentScore < -0.2 ? 'negative' : 'neutral',
         emotions: Array.from(emotions)
       },
       themes: [
         ...animals.map(a => a.type),
-        ...activities.map(a => a.type),
-        ...relationships.map(r => r.type)
+        ...actions.map(a => a.type)
       ],
       interpretation: interpretation.trim(),
-      recommendations: Array.from(new Set(recommendations)) // Remove duplicates
+      recommendations: Array.from(new Set(recommendations))
     };
   },
 
