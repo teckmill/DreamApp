@@ -2,7 +2,7 @@ export interface PremiumFeatures {
   advancedAnalysis: boolean;
   unlimitedDreams: boolean;
   exportData: boolean;
-  customThemes: boolean;
+  unlimitedAnalysis: boolean;
 }
 
 export const SUBSCRIPTION_TIERS = {
@@ -11,9 +11,9 @@ export const SUBSCRIPTION_TIERS = {
     adRequirement: 0,
     features: {
       advancedAnalysis: false,
-      unlimitedDreams: true,
+      unlimitedDreams: false,
       exportData: false,
-      customThemes: false
+      unlimitedAnalysis: false
     },
     limits: {
       dreamsPerMonth: 5,
@@ -29,7 +29,7 @@ export const SUBSCRIPTION_TIERS = {
       advancedAnalysis: true,
       unlimitedDreams: true,
       exportData: true,
-      customThemes: false
+      unlimitedAnalysis: true
     },
     limits: {
       dreamsPerMonth: -1,
@@ -45,7 +45,7 @@ export const SUBSCRIPTION_TIERS = {
       advancedAnalysis: true,
       unlimitedDreams: true,
       exportData: true,
-      customThemes: true
+      unlimitedAnalysis: true
     },
     limits: {
       dreamsPerMonth: -1,

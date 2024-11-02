@@ -78,10 +78,9 @@ export default function Subscription() {
 
   const features = {
     advancedAnalysis: 'Advanced Dream Analysis',
-    aiArtGeneration: 'AI Dream Art Generation',
     unlimitedDreams: 'Unlimited Dream Storage',
     exportData: 'Export Dream Data',
-    customThemes: 'Custom Themes'
+    unlimitedAnalysis: 'Unlimited Analysis'
   };
 
   const shouldShowWatchButton = (tierKey: string) => {
