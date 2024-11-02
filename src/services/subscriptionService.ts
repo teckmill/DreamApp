@@ -62,13 +62,35 @@ export const SUBSCRIPTION_TIERS = {
 
 export const subscriptionService = {
   getUserSubscription(userId: string) {
-    const subscription = localStorage.getItem(`subscription_${userId}`);
-    return subscription ? JSON.parse(subscription) : SUBSCRIPTION_TIERS.free;
+    try {
+      const subscription = localStorage.getItem(`subscription_${userId}`);
+      if (!subscription) {
+        return SUBSCRIPTION_TIERS.free;
+      }
+      const parsed = JSON.parse(subscription);
+      // Ensure the subscription has all required properties
+      return {
+        ...SUBSCRIPTION_TIERS.free, // Default values
+        ...parsed, // Override with stored values
+        features: {
+          ...SUBSCRIPTION_TIERS.free.features, // Default features
+          ...(parsed.features || {}) // Override with stored features
+        }
+      };
+    } catch (error) {
+      console.error('Error getting subscription:', error);
+      return SUBSCRIPTION_TIERS.free;
+    }
   },
 
   hasFeature(userId: string, feature: keyof PremiumFeatures): boolean {
-    const subscription = this.getUserSubscription(userId);
-    return subscription.features[feature];
+    try {
+      const subscription = this.getUserSubscription(userId);
+      return subscription?.features?.[feature] || false;
+    } catch (error) {
+      console.error('Error checking feature:', error);
+      return false;
+    }
   },
 
   checkLimit(userId: string, limitType: 'dreamsPerMonth' | 'analysisPerMonth' | 'communityPosts'): boolean {
