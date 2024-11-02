@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search, TrendingUp, Award, BookOpen, ThumbsUp, Flag } from 'lucide-react';
+import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search, TrendingUp, Award, BookOpen, ThumbsUp, Flag, PenSquare, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
 import { subscriptionService } from '../services/subscriptionService';
@@ -91,6 +91,9 @@ export default function Community() {
     }
     return [];
   });
+
+  const [editingPost, setEditingPost] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState('');
 
   // Save posts to localStorage whenever they change
   useEffect(() => {
@@ -359,6 +362,40 @@ export default function Community() {
     updateReputation('comment');
   };
 
+  // Add edit post handler
+  const handleEditPost = (post: DreamPost) => {
+    setEditingPost(post.id);
+    setEditedContent(post.content);
+    setSelectedTags(post.tags);
+    setSelectedCategory(post.category);
+  };
+
+  // Add save edit handler
+  const handleSaveEdit = (postId: string) => {
+    setPosts(posts.map(post => {
+      if (post.id === postId) {
+        return {
+          ...post,
+          content: editedContent,
+          tags: selectedTags,
+          category: selectedCategory,
+          analysis: dreamAnalyzer.analyzeDream(editedContent)
+        };
+      }
+      return post;
+    }));
+    setEditingPost(null);
+    setEditedContent('');
+    setSelectedTags([]);
+  };
+
+  // Add delete post handler
+  const handleDeletePost = (postId: string) => {
+    if (window.confirm('Are you sure you want to delete this post?')) {
+      setPosts(posts.filter(post => post.id !== postId));
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header Section */}
@@ -538,40 +575,85 @@ export default function Community() {
                     {new Date(post.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm">
-                    {post.category}
-                  </span>
-                  {post.analysis && (
-                    <span className={`px-3 py-1 rounded-full text-sm ${
-                      post.analysis.sentiment === 'positive'
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                        : post.analysis.sentiment === 'negative'
-                        ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {post.analysis.sentiment}
-                    </span>
-                  )}
-                </div>
+                {post.userId === user.id && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditPost(post)}
+                      className="p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    >
+                      <PenSquare className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePost(post.id)}
+                      className="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Post Content */}
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                {post.content}
-              </p>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
+              {editingPost === post.id ? (
+                <div className="space-y-4">
+                  <textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="w-full h-32 p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg resize-none"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {commonTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTags(prev => 
+                          prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                        )}
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          selectedTags.includes(tag)
+                            ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                        }`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => {
+                        setEditingPost(null);
+                        setEditedContent('');
+                        setSelectedTags([]);
+                      }}
+                      className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleSaveEdit(post.id)}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    {post.content}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {post.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {/* Dream Themes */}
               {post.analysis?.themes && (
