@@ -64,19 +64,33 @@ export const subscriptionService = {
   getUserSubscription(userId: string) {
     try {
       const subscription = localStorage.getItem(`subscription_${userId}`);
-      if (!subscription) {
-        return SUBSCRIPTION_TIERS.free;
+      const adHistory = localStorage.getItem(`ad_history_${userId}`);
+      const adsWatched = adHistory ? JSON.parse(adHistory).totalAdsWatched : 0;
+
+      // Determine tier based on ads watched
+      let tier;
+      if (adsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
+        tier = SUBSCRIPTION_TIERS.pro;
+      } else if (adsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
+        tier = SUBSCRIPTION_TIERS.premium;
+      } else {
+        tier = SUBSCRIPTION_TIERS.free;
       }
-      const parsed = JSON.parse(subscription);
-      // Ensure the subscription has all required properties
-      return {
-        ...SUBSCRIPTION_TIERS.free, // Default values
-        ...parsed, // Override with stored values
-        features: {
-          ...SUBSCRIPTION_TIERS.free.features, // Default features
-          ...(parsed.features || {}) // Override with stored features
-        }
-      };
+
+      // If there's a saved subscription, merge it with the determined tier
+      if (subscription) {
+        const parsed = JSON.parse(subscription);
+        return {
+          ...tier,
+          ...parsed,
+          features: {
+            ...tier.features,
+            ...(parsed.features || {})
+          }
+        };
+      }
+
+      return tier;
     } catch (error) {
       console.error('Error getting subscription:', error);
       return SUBSCRIPTION_TIERS.free;

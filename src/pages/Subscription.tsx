@@ -84,6 +84,14 @@ export default function Subscription() {
     customThemes: 'Custom Themes'
   };
 
+  const shouldShowWatchButton = (tierKey: string) => {
+    const currentTierName = currentTier.name;
+    if (tierKey === 'free') return false;
+    if (currentTierName === 'Professional') return false;
+    if (currentTierName === 'Premium' && tierKey === 'premium') return false;
+    return true;
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="text-center mb-12">
@@ -152,12 +160,12 @@ export default function Subscription() {
               ))}
             </div>
 
-            {tier.name !== 'Basic' && (
+            {tier.name !== 'Basic' && shouldShowWatchButton(key) && (
               <button
                 onClick={handleWatchAd}
-                disabled={isWatchingAd || currentTier.name === tier.name}
+                disabled={isWatchingAd}
                 className={`w-full py-3 px-6 rounded-lg text-center flex items-center justify-center space-x-2 ${
-                  currentTier.name === tier.name
+                  isWatchingAd
                     ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700'
                 }`}
