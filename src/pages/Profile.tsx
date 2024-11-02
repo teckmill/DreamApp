@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Settings, LineChart, Calendar, Award, BookOpen, MessageCircle, Heart, Edit, Save, X } from 'lucide-react';
+import { Settings, LineChart, Calendar, Award, BookOpen, MessageCircle, Heart, Edit, Save, X, Crown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { subscriptionService } from '../services/subscriptionService';
+import { rewardService } from '../services/rewardService';
 
 export default function Profile() {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedUsername, setEditedUsername] = useState(user?.username || '');
   const [editedBio, setEditedBio] = useState(user?.bio || '');
+  const currentTier = subscriptionService.getUserSubscription(user.id);
+  const userRewards = rewardService.getUserRewards(user.id);
 
   // Mock data - in a real app, this would come from your backend
   const stats = {
@@ -69,9 +73,17 @@ export default function Profile() {
             </div>
           ) : (
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {user?.username}
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {user?.username}
+                </h1>
+                {currentTier.name !== 'Basic' && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                    <Crown className="h-4 w-4 mr-1" />
+                    {currentTier.name}
+                  </span>
+                )}
+              </div>
               <p className="text-gray-600 dark:text-gray-300">{user?.email}</p>
               <p className="text-gray-600 dark:text-gray-300 mt-2">{editedBio || 'No bio yet'}</p>
             </div>
@@ -83,6 +95,25 @@ export default function Profile() {
             <Edit className="h-5 w-5" />
           </button>
         </div>
+
+        {currentTier.name !== 'Basic' && (
+          <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+            <h3 className="font-medium text-indigo-600 dark:text-indigo-400 mb-2">
+              Premium Benefits Active
+            </h3>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Premium Time Left: {userRewards.premiumTimeLeft} hours
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Analysis Credits: {userRewards.analysisCredits}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Dream Tokens: {userRewards.dreamTokens}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
