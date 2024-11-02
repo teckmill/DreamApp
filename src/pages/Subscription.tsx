@@ -40,15 +40,15 @@ export default function Subscription() {
     }
   };
 
-  const handleWatchAd = async () => {
+  const handleWatchAd = async (duration: keyof typeof AD_DURATIONS) => {
     if (!adService.canWatchAd(user.id)) {
       return;
     }
 
     setIsWatchingAd(true);
     try {
-      const reward = await adService.watchAd();
-      adService.recordAdView(user.id);
+      const reward = await adService.watchAd(duration);
+      adService.recordAdView(user.id, reward);
       
       // Apply reward
       if (reward.type === 'premium_time') {
@@ -187,50 +187,115 @@ export default function Subscription() {
           Watch Ads for Premium Access
         </h2>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Earn premium features by watching short ads
+          Earn premium features by watching ads - longer ads give better rewards!
         </p>
 
-        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <div>
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              Watch an Ad
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Get 24 hours of premium access
-            </p>
-          </div>
-          <button
-            onClick={handleWatchAd}
-            disabled={isWatchingAd || adCooldown}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-              isWatchingAd || adCooldown
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400'
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
-          >
-            {isWatchingAd ? (
-              <>
-                <Loader className="h-5 w-5 animate-spin" />
-                <span>Watching Ad...</span>
-              </>
-            ) : adCooldown ? (
-              <>
-                <Clock className="h-5 w-5" />
-                <span>Cooldown</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-5 w-5" />
-                <span>Watch Ad</span>
-              </>
-            )}
-          </button>
+        <div className="space-y-4">
+          {Object.entries(AD_DURATIONS).map(([duration, { seconds, multiplier }]) => (
+            <div key={duration} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">
+                  {duration.charAt(0).toUpperCase() + duration.slice(1)} Ad
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {seconds} seconds - {multiplier}x rewards
+                </p>
+              </div>
+              <button
+                onClick={() => handleWatchAd(duration as keyof typeof AD_DURATIONS)}
+                disabled={isWatchingAd || adCooldown}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                  isWatchingAd || adCooldown
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {isWatchingAd ? (
+                  <>
+                    <Loader className="h-5 w-5 animate-spin" />
+                    <span>Watching...</span>
+                  </>
+                ) : adCooldown ? (
+                  <>
+                    <Clock className="h-5 w-5" />
+                    <span>Cooldown</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-5 w-5" />
+                    <span>Watch</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ))}
         </div>
+      </div>
 
-        <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          * You can watch one ad per hour
+      <AdProgress />
+    </div>
+  );
+}
+
+const AdProgress: React.FC = () => {
+  const { user } = useAuth();
+  const progress = adService.getProgress(user.id);
+  const history = adService.getAdHistory(user.id);
+
+  return (
+    <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+        Your Ad Rewards Progress
+      </h2>
+
+      {/* Achievement Progress */}
+      <div className="space-y-4 mb-8">
+        {progress.achievements.map((achievement) => (
+          <div key={achievement.name} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium text-gray-900 dark:text-white">
+                {achievement.name}
+              </span>
+              {achievement.completed && (
+                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full text-sm">
+                  Completed!
+                </span>
+              )}
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5 mb-2">
+              <div
+                className="bg-indigo-600 dark:bg-indigo-400 rounded-full h-2.5"
+                style={{ width: `${(achievement.progress / AD_ACHIEVEMENTS.find(a => a.name === achievement.name)?.requirement! || 1) * 100}%` }}
+              ></div>
+            </div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {achievement.progress} / {AD_ACHIEVEMENTS.find(a => a.name === achievement.name)?.requirement}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Reward History */}
+      <div>
+        <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          Recent Rewards
+        </h3>
+        <div className="space-y-2">
+          {history.rewards.slice(-5).reverse().map((reward, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+            >
+              <span className="text-gray-700 dark:text-gray-300">
+                {reward.amount} {reward.type.replace('_', ' ')}
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {new Date(reward.timestamp).toLocaleDateString()}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
-} 
+}; 
