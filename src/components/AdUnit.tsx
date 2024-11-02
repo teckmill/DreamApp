@@ -23,6 +23,7 @@ export default function AdUnit({
   const [isPlaying, setIsPlaying] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -39,18 +40,22 @@ export default function AdUnit({
     }
     setIsPlaying(false);
     setIsCompleted(true);
+    setIsProcessing(true);
     
     try {
       if (onComplete) {
         await onComplete();
       }
+      // Add a small delay before closing
       setTimeout(() => {
         setShowAd(false);
-      }, 1500);
+      }, 500);
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
       setVideoProgress(0);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -120,7 +125,8 @@ export default function AdUnit({
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
                 {isPlaying ? 'Watching video...' : 
-                 isCompleted ? 'Processing reward...' : 
+                 isProcessing ? 'Processing reward...' : 
+                 isCompleted ? 'Complete!' : 
                  'Ready to watch'}
               </p>
             </div>
