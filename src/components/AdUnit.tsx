@@ -46,7 +46,7 @@ export default function AdUnit({
       }
       setTimeout(() => {
         setShowAd(false);
-      }, 1000);
+      }, 1500);
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
@@ -62,12 +62,13 @@ export default function AdUnit({
       setVideoProgress(prev => {
         const newProgress = prev + 2;
         if (newProgress >= 100) {
+          clearInterval(interval);
           handleVideoComplete();
           return 100;
         }
         return newProgress;
       });
-    }, 100);
+    }, 50);
     setIntervalId(interval);
   };
 
@@ -105,7 +106,7 @@ export default function AdUnit({
               {isPlaying ? (
                 <Loader className="h-12 w-12 text-gray-400 animate-spin" />
               ) : isCompleted ? (
-                <div className="text-green-500 text-xl">✓</div>
+                <div className="text-green-500 text-4xl">✓</div>
               ) : (
                 <Play className="h-12 w-12 text-gray-400" />
               )}
@@ -137,17 +138,5 @@ export default function AdUnit({
     );
   }
 
-  return (
-    <div className={`ad-container ${className}`}>
-      <ins
-        className="adsbygoogle"
-        style={{ display: 'block' }}
-        data-ad-client="ca-pub-1778492527638407"
-        data-ad-slot={slot}
-        data-ad-format={format}
-        data-full-width-responsive="true"
-        {...(layout && { 'data-ad-layout': layout })}
-      />
-    </div>
-  );
+  return null;
 } 
