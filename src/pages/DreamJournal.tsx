@@ -86,20 +86,17 @@ export default function DreamJournal() {
     }
 
     try {
-      // Get or create analysis
-      const dreamAnalysis = analysis || dreamAnalyzer.analyzeDream(dreamText);
-      
       const newDream: DreamEntry = {
         id: editingDream || Date.now().toString(),
         userId: user.id,
         content: dreamText,
         tags: selectedTags,
         date: selectedDate,
-        analysis: dreamAnalysis,
-        category: 'lucid',
-        mood: 3,
-        clarity: 3,
-        isRecurring: false
+        analysis: analysis || null,
+        category: category,
+        mood: mood,
+        clarity: clarity,
+        isRecurring: isRecurring
       };
 
       if (editingDream) {
@@ -108,7 +105,7 @@ export default function DreamJournal() {
         ));
         setEditingDream(null);
       } else {
-        setDreams([newDream, ...dreams]);
+        setDreams(prevDreams => [newDream, ...prevDreams]);
         subscriptionService.incrementUsage(user.id, 'dreamsPerMonth');
       }
 
@@ -117,8 +114,17 @@ export default function DreamJournal() {
       setSelectedTags([]);
       setAnalysis(null);
       setShowAnalysis(false);
+      setMood(3);
+      setClarity(3);
+      setIsRecurring(false);
+      setCategory('general');
+      setSelectedDate(new Date());
+
+      // Show success message or feedback
+      alert('Dream saved successfully!');
     } catch (error) {
       console.error('Save error:', error);
+      alert('Failed to save dream. Please try again.');
     }
   };
 
