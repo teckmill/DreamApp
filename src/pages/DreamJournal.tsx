@@ -40,10 +40,9 @@ export default function DreamJournal() {
     
     try {
       const result = dreamAnalyzer.analyzeDream(dreamText);
-      console.log('Analysis result:', result); // Add debug logging
+      console.log('Analysis result:', result); // Debug logging
       setAnalysis(result);
       setShowAnalysis(true);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     } catch (error) {
       console.error('Analysis error:', error);
     }
