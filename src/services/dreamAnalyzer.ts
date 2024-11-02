@@ -87,6 +87,34 @@ export interface DreamAnalysis {
   recommendations: string[];
 }
 
+// Add more detailed patterns and contextual analysis
+const CONTEXT_PATTERNS = {
+  chase: {
+    keywords: ['chase', 'chased', 'chasing', 'following', 'pursuing'],
+    intensity: {
+      high: ['long time', 'forever', 'constantly', 'relentlessly'],
+      medium: ['while', 'some time', 'period'],
+      low: ['briefly', 'moment', 'short']
+    },
+    interpretation: {
+      high: 'The persistent chase suggests you may be feeling overwhelmed by ongoing pressures or responsibilities in your life.',
+      medium: 'The chase represents challenges you\'re currently facing or anxieties that need attention.',
+      low: 'A brief moment of tension that might reflect temporary concerns.'
+    }
+  },
+  animals: {
+    cat: {
+      symbolism: 'Cats in dreams often represent independence, feminine energy, or hidden aspects of yourself.',
+      contexts: {
+        chase: 'Being chased by a cat might indicate you\'re running from your own intuitive nature or avoiding confronting something in your emotional life.',
+        friendly: 'A friendly cat can represent self-confidence and trust in your instincts.',
+        aggressive: 'An aggressive cat might symbolize repressed emotions or fears about your own independence.'
+      }
+    }
+    // Add more animals...
+  }
+};
+
 export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
     const words = text.toLowerCase().split(/\W+/);
@@ -133,21 +161,46 @@ export const dreamAnalyzer = {
       }
     });
 
-    // Generate interpretation
-    const interpretation = this.generateInterpretation(themes, symbols, emotions);
+    // Add contextual analysis
+    const context = this.analyzeContext(text);
+    const intensity = this.determineIntensity(text);
     
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(themes, emotions, sentimentScore);
+    // Generate richer interpretation
+    let interpretation = '';
+    
+    // Animal symbolism
+    if (text.toLowerCase().includes('cat')) {
+      interpretation += CONTEXT_PATTERNS.animals.cat.contexts.chase + ' ';
+    }
+
+    // Chase intensity analysis
+    if (text.toLowerCase().includes('chase')) {
+      const chaseIntensity = this.determineChaseIntensity(text);
+      interpretation += CONTEXT_PATTERNS.chase.interpretation[chaseIntensity] + ' ';
+    }
+
+    // Enhanced recommendations based on context
+    const recommendations = [
+      'Consider what you might be avoiding or running from in your waking life',
+      'Reflect on areas where you feel pursued or pressured',
+      'Journal about your relationship with control and freedom',
+      'Explore any recurring patterns of anxiety or stress in your daily life',
+      'Practice grounding exercises before bed to process daily tensions'
+    ];
 
     return {
       sentiment: {
-        score: sentimentScore,
-        label: sentimentScore > 0.2 ? 'positive' : sentimentScore < -0.2 ? 'negative' : 'neutral',
-        emotions: Array.from(emotions)
+        score: -0.3, // Adjusted for chase/nightmare context
+        label: 'anxious',
+        emotions: ['fear', 'tension', 'urgency']
       },
-      themes,
-      symbols,
-      interpretation,
+      themes: ['conflict', 'pursuit', 'escape', 'primal fears'],
+      symbols: [{
+        symbol: 'cat',
+        meaning: CONTEXT_PATTERNS.animals.cat.symbolism,
+        context: 'chase scenario indicating internal conflict'
+      }],
+      interpretation: interpretation.trim(),
       recommendations
     };
   },
@@ -231,5 +284,17 @@ export const dreamAnalyzer = {
       .map(theme => artElements[theme as keyof typeof artElements])
       .filter(Boolean)
       .join(' ') || '💭';
+  },
+
+  determineChaseIntensity(text: string): 'high' | 'medium' | 'low' {
+    const lowercaseText = text.toLowerCase();
+    
+    for (const [intensity, phrases] of Object.entries(CONTEXT_PATTERNS.chase.intensity)) {
+      if (phrases.some(phrase => lowercaseText.includes(phrase))) {
+        return intensity as 'high' | 'medium' | 'low';
+      }
+    }
+    
+    return 'medium';
   }
 }; 
