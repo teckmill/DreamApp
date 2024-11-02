@@ -86,7 +86,9 @@ export const adService = {
       amount: reward.amount,
       timestamp: new Date().toISOString()
     });
-    history.totalAdsWatched++;
+
+    // Increment total ads watched
+    history.totalAdsWatched = (history.totalAdsWatched || 0) + 1;
 
     // Update achievements
     history.achievements = history.achievements.map(achievement => {
@@ -95,7 +97,6 @@ export const adService = {
         const progress = history.totalAdsWatched;
         const completed = progress >= achievementDef.requirement;
         
-        // If newly completed, grant achievement reward
         if (completed && !achievement.completed) {
           this.grantAchievementReward(userId, achievementDef.reward);
         }
@@ -108,6 +109,11 @@ export const adService = {
       }
       return achievement;
     });
+
+    // Reset ad count if user has reached Pro tier
+    if (history.totalAdsWatched >= 15) {
+      history.totalAdsWatched = 0;
+    }
 
     localStorage.setItem(`ad_history_${userId}`, JSON.stringify(history));
   },
