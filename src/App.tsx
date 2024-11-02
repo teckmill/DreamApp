@@ -16,7 +16,19 @@ import AdminPanel from './pages/AdminPanel';
 import { systemService } from './services/systemService';
 
 function App() {
-  const { isAdmin } = useAuth();
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ThemeProvider>
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { isAdmin, isAuthenticated } = useAuth();
   const isMaintenanceMode = systemService.isMaintenanceMode();
 
   if (isMaintenanceMode && !isAdmin) {
@@ -35,50 +47,44 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <BrowserRouter>
-          <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-950 transition-colors duration-300">
-            <Navbar />
-            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/journal" element={
-                  <ProtectedRoute>
-                    <DreamJournal />
-                  </ProtectedRoute>
-                } />
-                <Route path="/community" element={
-                  <ProtectedRoute>
-                    <Community />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                <Route path="/subscription" element={
-                  <ProtectedRoute>
-                    <Subscription />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin" element={
-                  <ProtectedRoute>
-                    <AdminPanel />
-                  </ProtectedRoute>
-                } />
-              </Routes>
-            </main>
-            <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-gray-600 dark:text-gray-400">
-              <p>© 2024 DreamScape. All rights reserved.</p>
-            </footer>
-          </div>
-        </BrowserRouter>
-      </ThemeProvider>
-    </AuthProvider>
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-950 transition-colors duration-300">
+      <Navbar />
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/journal" element={
+            <ProtectedRoute>
+              <DreamJournal />
+            </ProtectedRoute>
+          } />
+          <Route path="/community" element={
+            <ProtectedRoute>
+              <Community />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          <Route path="/subscription" element={
+            <ProtectedRoute>
+              <Subscription />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </main>
+      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-gray-600 dark:text-gray-400">
+        <p>© 2024 DreamScape. All rights reserved.</p>
+      </footer>
+    </div>
   );
 }
 
