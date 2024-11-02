@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
 import { rewardService } from '../services/rewardService';
 import { adService } from '../services/adService';
+import { systemService } from '../services/systemService';
 
 interface UserStats {
   totalUsers: number;
@@ -58,14 +59,7 @@ export default function AdminPanel() {
     }
     return [];
   });
-  const [systemSettings, setSystemSettings] = useState({
-    allowNewRegistrations: true,
-    maintenanceMode: false,
-    adCooldownPeriod: 1, // hours
-    maxDreamsPerUser: 100,
-    maxPostsPerUser: 50,
-    requireEmailVerification: true
-  });
+  const [systemSettings, setSystemSettings] = useState(systemService.getSettings());
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -217,11 +211,21 @@ export default function AdminPanel() {
 
   // System Settings Functions
   const handleSettingChange = (setting: string, value: any) => {
-    setSystemSettings(prev => ({
-      ...prev,
+    const newSettings = {
+      ...systemSettings,
       [setting]: value
-    }));
-    // In a real app, save to backend
+    };
+    setSystemSettings(newSettings);
+    systemService.saveSettings(newSettings);
+
+    // Show success message
+    setSuccess(`Successfully updated ${setting}`);
+
+    // Apply immediate effects
+    if (setting === 'maintenanceMode') {
+      // Force reload for maintenance mode changes
+      window.location.reload();
+    }
   };
 
   // Enhanced reward management function
@@ -692,6 +696,33 @@ export default function AdminPanel() {
                 className="w-full p-2 border rounded-lg"
                 min="1"
               />
+            </div>
+
+            <div>
+              <h3 className="font-medium mb-2">Maximum Posts per User</h3>
+              <input
+                type="number"
+                value={systemSettings.maxPostsPerUser}
+                onChange={(e) => handleSettingChange('maxPostsPerUser', parseInt(e.target.value))}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Require Email Verification</h3>
+                <p className="text-sm text-gray-500">Users must verify email before accessing features</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={systemSettings.requireEmailVerification}
+                  onChange={(e) => handleSettingChange('requireEmailVerification', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+              </label>
             </div>
           </div>
         </div>

@@ -7,14 +7,33 @@ import DreamJournal from './pages/DreamJournal';
 import Community from './pages/Community';
 import Profile from './pages/Profile';
 import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import Subscription from './pages/Subscription';
 import AdminPanel from './pages/AdminPanel';
+import { systemService } from './services/systemService';
 
 function App() {
+  const { isAdmin } = useAuth();
+  const isMaintenanceMode = systemService.isMaintenanceMode();
+
+  if (isMaintenanceMode && !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-950">
+        <div className="max-w-md mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Maintenance Mode
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            The site is currently undergoing maintenance. Please check back later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthProvider>
       <ThemeProvider>
