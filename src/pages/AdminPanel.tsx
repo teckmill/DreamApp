@@ -164,16 +164,43 @@ export default function AdminPanel() {
     // In a real app, save to backend
   };
 
-  // Reward Management Functions
-  const handleRewardAction = async (userId: string, action: 'grant' | 'revoke', rewardType: string, amount: number) => {
-    if (action === 'grant') {
+  // Enhanced reward management function
+  const handleRewardAction = async (userId: string, rewardType: string) => {
+    try {
+      let amount = 0;
+      let type: any;
+
+      switch (rewardType) {
+        case 'premium_time':
+          amount = 24;
+          type = 'premium_time';
+          break;
+        case 'analysis_credits':
+          amount = 5;
+          type = 'analysis_credits';
+          break;
+        case 'dream_tokens':
+          amount = 100;
+          type = 'dream_tokens';
+          break;
+        default:
+          throw new Error('Invalid reward type');
+      }
+
       await rewardService.addReward(userId, {
-        type: rewardType as any,
+        type,
         amount,
-        source: 'achievement'
+        source: 'achievement' // Using 'achievement' as the source
       });
+
+      // Refresh users list to update displayed rewards
+      loadUsers();
+      
+      setSuccess(`Successfully granted ${amount} ${type.replace('_', ' ')} to user`);
+    } catch (error) {
+      setError('Failed to grant reward');
+      console.error('Error granting reward:', error);
     }
-    loadUsers(); // Refresh user list
   };
 
   // Filter users based on search and filter
@@ -628,12 +655,7 @@ export default function AdminPanel() {
                     <label className="block text-sm font-medium mb-2">Reward Type</label>
                     <select
                       className="w-full p-2 border rounded-lg"
-                      onChange={(e) => {
-                        const type = e.target.value;
-                        const amount = type === 'premium_time' ? 24 : 
-                                     type === 'analysis_credits' ? 5 : 100;
-                        handleRewardAction(selectedUserId, 'grant', type, amount);
-                      }}
+                      onChange={(e) => handleRewardAction(selectedUserId, e.target.value)}
                     >
                       <option value="">Select reward type</option>
                       <option value="premium_time">Premium Time (24h)</option>
