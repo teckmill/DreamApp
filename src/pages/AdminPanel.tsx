@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Award, Settings, BarChart, AlertTriangle, Search, Filter, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { subscriptionService } from '../services/subscriptionService';
+import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
 import { rewardService } from '../services/rewardService';
 import { adService } from '../services/adService';
 
@@ -85,6 +85,13 @@ export default function AdminPanel() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Add function to format feature name
+  const formatFeatureName = (feature: string) => {
+    return feature
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/^./, str => str.toUpperCase()); // Capitalize first letter
   };
 
   if (!isAdmin) {
@@ -268,13 +275,26 @@ export default function AdminPanel() {
                   {Object.entries(tier.features).map(([feature, enabled]) => (
                     <div key={feature} className="flex items-center justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-300">
-                        {feature}
+                        {formatFeatureName(feature)}
                       </span>
                       <span className={enabled ? 'text-green-500' : 'text-red-500'}>
                         {enabled ? '✓' : '×'}
                       </span>
                     </div>
                   ))}
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Limits</h4>
+                    {Object.entries(tier.limits).map(([limit, value]) => (
+                      <div key={limit} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600 dark:text-gray-300">
+                          {formatFeatureName(limit)}
+                        </span>
+                        <span className="text-gray-900 dark:text-white">
+                          {value === -1 ? 'Unlimited' : value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
