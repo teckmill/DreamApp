@@ -103,6 +103,17 @@ export default function Subscription() {
     return tierKey === 'premium' && adsWatched < SUBSCRIPTION_TIERS.premium.adRequirement;
   };
 
+  // Add function to get display count for ads watched
+  const getDisplayCount = (tier: string, totalWatched: number) => {
+    if (tier === 'premium') {
+      return `${Math.min(totalWatched, SUBSCRIPTION_TIERS.premium.adRequirement)}/${SUBSCRIPTION_TIERS.premium.adRequirement}`;
+    }
+    if (tier === 'pro') {
+      return `${Math.min(totalWatched, SUBSCRIPTION_TIERS.pro.adRequirement)}/${SUBSCRIPTION_TIERS.pro.adRequirement}`;
+    }
+    return `${totalWatched}/0`;
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="text-center mb-12">
@@ -153,7 +164,7 @@ export default function Subscription() {
               </p>
               {tier.adRequirement > 0 && (
                 <div className="mt-2 text-sm text-indigo-600 dark:text-indigo-400">
-                  {adHistory.totalAdsWatched}/{tier.adRequirement} ads watched
+                  {getDisplayCount(key, adHistory.totalAdsWatched)} ads watched
                 </div>
               )}
             </div>
