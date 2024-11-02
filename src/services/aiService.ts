@@ -10,23 +10,41 @@ export interface DreamAnalysis {
 }
 
 export const aiService = {
-  // Simple dream art generation using emoji art
+  // Generate dream art using emoji combinations
   async generateDreamArt(dreamText: string): Promise<string> {
-    const artStyles = [
-      '🌙 ✨ 💫',
-      '🌟 🌙 ⭐',
-      '🦋 🌸 ✨',
-      '🌊 🌙 ⭐',
-      '🌿 🦋 💫',
-      '🌸 💫 ✨'
-    ];
+    const dreamLower = dreamText.toLowerCase();
     
-    return artStyles[Math.floor(Math.random() * artStyles.length)];
+    // Theme-based art combinations
+    const artCombinations = {
+      nature: ['🌳 🌸 🌿', '🌺 🍃 🌱', '🌲 🍂 🌾'],
+      water: ['🌊 🌙 ⭐', '🌊 🏊 🐠', '💧 🌊 🐋'],
+      sky: ['🌙 ✨ 💫', '☁️ 🌤️ 🌈', '🌟 ⭐ 🌙'],
+      animals: ['🦋 🕊️ 🐇', '🦁 🐯 🐘', '🐺 🦊 🦌'],
+      buildings: ['🏰 🌙 ✨', '🏛️ 🌟 🌕', '🏠 🌳 🌸'],
+      emotions: ['💖 💫 ✨', '💭 💫 🌟', '💝 💫 ⭐'],
+      adventure: ['🗺️ 🧭 ⭐', '🎯 🌟 💫', '🚀 ✨ 🌙'],
+      mystery: ['🔮 🌙 ✨', '🎭 🌟 💫', '🎪 ⭐ 🌙']
+    };
+
+    // Default art if no themes match
+    const defaultArt = ['💭 💫 ✨', '🌙 ⭐ 💫', '✨ 💫 🌟'];
+
+    // Find matching theme
+    let selectedArt = defaultArt;
+    for (const [theme, art] of Object.entries(artCombinations)) {
+      if (dreamLower.includes(theme)) {
+        selectedArt = art;
+        break;
+      }
+    }
+
+    // Return random art from selected theme
+    return selectedArt[Math.floor(Math.random() * selectedArt.length)];
   },
 
   // Simple dream pattern matching
   findPatterns(dreamText: string): string[] {
-    const patterns = [];
+    const patterns: string[] = [];
     const keywords = {
       flying: ['fly', 'flying', 'float', 'floating'],
       falling: ['fall', 'falling', 'drop', 'dropping'],
