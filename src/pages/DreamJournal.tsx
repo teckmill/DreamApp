@@ -3,6 +3,7 @@ import { PenSquare, Calendar, Tag, Mic, Send, Sparkles, Brain, Trash2, X } from 
 import { dreamAnalyzer, type DreamAnalysis } from '../services/dreamAnalyzer';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 interface DreamEntry {
   id: string;
@@ -163,6 +164,13 @@ export default function DreamJournal() {
   const availableThemes = subscriptionService.hasFeature(user.id, 'customThemes')
     ? ['default', 'dark', 'light', 'cosmic', 'mystic']
     : ['default'];
+
+  const userRewards = rewardService.getUserRewards(user.id);
+  const currentTier = subscriptionService.getUserSubscription(user.id);
+
+  // Add usage stats
+  const dreamsThisMonth = subscriptionService.getUsage(user.id, 'dreamsPerMonth');
+  const analysisThisMonth = subscriptionService.getUsage(user.id, 'analysisPerMonth');
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -360,6 +368,78 @@ export default function DreamJournal() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Your Dream Journal Status
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">Dreams</h3>
+            {currentTier.limits.dreamsPerMonth === -1 ? (
+              <p className="text-green-600 dark:text-green-400">Unlimited dreams available</p>
+            ) : (
+              <>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {currentTier.limits.dreamsPerMonth - dreamsThisMonth} dreams remaining this month
+                </p>
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-indigo-600 h-2 rounded-full"
+                    style={{ width: `${(dreamsThisMonth / currentTier.limits.dreamsPerMonth) * 100}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">Analysis Credits</h3>
+            {userRewards.premiumTimeLeft > 0 ? (
+              <p className="text-green-600 dark:text-green-400">
+                Unlimited analysis (Premium active: {userRewards.premiumTimeLeft}h)
+              </p>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-300">
+                {userRewards.analysisCredits} analysis credits available
+              </p>
+            )}
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">Features</h3>
+            <ul className="text-sm space-y-1">
+              <li className="flex items-center">
+                <span className={currentTier.features.exportData ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
+                  • Export Data
+                </span>
+              </li>
+              <li className="flex items-center">
+                <span className={currentTier.features.aiArtGeneration ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
+                  • AI Art Generation
+                </span>
+              </li>
+              <li className="flex items-center">
+                <span className={currentTier.features.customThemes ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
+                  • Custom Themes
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Add upgrade prompt if on basic plan */}
+        {currentTier.name === 'Basic' && (
+          <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+            <p className="text-indigo-600 dark:text-indigo-400">
+              Want unlimited dreams and analysis? 
+              <Link to="/subscription" className="ml-2 underline">
+                Watch ads to unlock premium features
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
