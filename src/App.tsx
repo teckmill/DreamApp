@@ -7,7 +7,7 @@ import DreamJournal from './pages/DreamJournal';
 import Community from './pages/Community';
 import Profile from './pages/Profile';
 import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
