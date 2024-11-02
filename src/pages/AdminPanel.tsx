@@ -102,24 +102,41 @@ export default function AdminPanel() {
         subscriptionService.getUserSubscription(u.id).name === 'Professional'
       ).length;
 
-      // Get system stats
+      // Get system stats - Fix dream counting
       const allDreams = users.reduce((acc: number, u: any) => {
-        const userDreams = JSON.parse(localStorage.getItem(`dreams_${u.id}`) || '[]');
-        return acc + userDreams.length;
+        try {
+          const userDreams = JSON.parse(localStorage.getItem(`dreams_${u.id}`) || '[]');
+          return acc + (Array.isArray(userDreams) ? userDreams.length : 0);
+        } catch (error) {
+          console.error(`Error loading dreams for user ${u.id}:`, error);
+          return acc;
+        }
       }, 0);
 
-      const allPosts = JSON.parse(localStorage.getItem('dreamscape_community_posts') || '[]').length;
+      // Fix post counting
+      const communityPosts = JSON.parse(localStorage.getItem('dreamscape_community_posts') || '[]');
+      const allPosts = Array.isArray(communityPosts) ? communityPosts.length : 0;
 
       // Calculate total ads and rewards
       const totalAds = users.reduce((acc: number, u: any) => {
-        const adHistory = adService.getAdHistory(u.id);
-        return acc + adHistory.totalAdsWatched;
+        try {
+          const adHistory = adService.getAdHistory(u.id);
+          return acc + (adHistory?.totalAdsWatched || 0);
+        } catch (error) {
+          console.error(`Error loading ad history for user ${u.id}:`, error);
+          return acc;
+        }
       }, 0);
 
       // Calculate total rewards given
       const totalRewards = users.reduce((acc: number, u: any) => {
-        const adHistory = adService.getAdHistory(u.id);
-        return acc + (adHistory.rewards?.length || 0);
+        try {
+          const adHistory = adService.getAdHistory(u.id);
+          return acc + (adHistory?.rewards?.length || 0);
+        } catch (error) {
+          console.error(`Error loading rewards for user ${u.id}:`, error);
+          return acc;
+        }
       }, 0);
 
       setUserStats({
