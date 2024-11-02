@@ -119,15 +119,16 @@ export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
     const words = text.toLowerCase().split(/\W+/);
     const wordSet = new Set(words);
+    const textLower = text.toLowerCase();
 
-    // Analyze emotions and sentiment
+    // Analyze emotions and sentiment with more context
     const emotions = new Set<string>();
     let sentimentScore = 0;
     let emotionCounts = 0;
 
     Object.entries(EMOTIONS).forEach(([emotion, keywords]) => {
       keywords.forEach(keyword => {
-        if (wordSet.has(keyword)) {
+        if (textLower.includes(keyword)) {
           emotions.add(emotion);
           sentimentScore += (emotion === 'joy' || emotion === 'love') ? 1 : 
                            (emotion === 'fear' || emotion === 'anger' || emotion === 'sadness') ? -1 : 0;
@@ -139,68 +140,69 @@ export const dreamAnalyzer = {
     // Normalize sentiment score
     sentimentScore = emotionCounts > 0 ? sentimentScore / emotionCounts : 0;
 
-    // Analyze themes
+    // Detect themes with context
     const themes = Object.entries(DREAM_THEMES)
       .filter(([_, { keywords }]) => 
-        keywords.some(keyword => text.toLowerCase().includes(keyword)))
+        keywords.some(keyword => textLower.includes(keyword)))
       .map(([theme]) => theme);
 
-    // Analyze symbols
+    // Analyze symbols with context
     const symbols: SymbolAnalysis[] = [];
     Object.entries(SYMBOLS).forEach(([category, data]) => {
       if ('keywords' in data) {
         const symbolData = data as { keywords: string[], meaning: string };
-        const found = symbolData.keywords.some(keyword => text.toLowerCase().includes(keyword));
+        const found = symbolData.keywords.some(keyword => textLower.includes(keyword));
         if (found) {
+          const context = this.extractContext(text, symbolData.keywords);
           symbols.push({
             symbol: category,
             meaning: symbolData.meaning,
-            context: this.extractContext(text, symbolData.keywords)
+            context
           });
         }
       }
     });
 
-    // Add contextual analysis
-    const context = this.analyzeContext(text);
-    const intensity = this.determineIntensity(text);
-    
-    // Generate richer interpretation
-    let interpretation = '';
-    
+    // Check for specific patterns
+    if (textLower.includes('chase') || textLower.includes('running')) {
+      const intensity = this.determineChaseIntensity(text);
+      const interpretation = CONTEXT_PATTERNS.chase.interpretation[intensity];
+      themes.push('pursuit');
+      if (!interpretation.includes(interpretation)) {
+        symbols.push({
+          symbol: 'chase',
+          meaning: 'Avoidance or confrontation of issues',
+          context: interpretation
+        });
+      }
+    }
+
     // Animal symbolism
-    if (text.toLowerCase().includes('cat')) {
-      interpretation += CONTEXT_PATTERNS.animals.cat.contexts.chase + ' ';
+    if (textLower.includes('cat')) {
+      const catContext = textLower.includes('chase') ? 'chase' :
+                        textLower.includes('attack') || textLower.includes('scratch') ? 'aggressive' : 'friendly';
+      symbols.push({
+        symbol: 'cat',
+        meaning: CONTEXT_PATTERNS.animals.cat.symbolism,
+        context: CONTEXT_PATTERNS.animals.cat.contexts[catContext]
+      });
     }
 
-    // Chase intensity analysis
-    if (text.toLowerCase().includes('chase')) {
-      const chaseIntensity = this.determineChaseIntensity(text);
-      interpretation += CONTEXT_PATTERNS.chase.interpretation[chaseIntensity] + ' ';
-    }
-
-    // Enhanced recommendations based on context
-    const recommendations = [
-      'Consider what you might be avoiding or running from in your waking life',
-      'Reflect on areas where you feel pursued or pressured',
-      'Journal about your relationship with control and freedom',
-      'Explore any recurring patterns of anxiety or stress in your daily life',
-      'Practice grounding exercises before bed to process daily tensions'
-    ];
+    // Generate comprehensive interpretation
+    const interpretation = this.generateInterpretation(themes, symbols, emotions);
+    
+    // Generate targeted recommendations
+    const recommendations = this.generateRecommendations(themes, emotions, sentimentScore, symbols);
 
     return {
       sentiment: {
-        score: -0.3, // Adjusted for chase/nightmare context
-        label: 'anxious',
-        emotions: ['fear', 'tension', 'urgency']
+        score: sentimentScore,
+        label: sentimentScore > 0.2 ? 'positive' : sentimentScore < -0.2 ? 'negative' : 'neutral',
+        emotions: Array.from(emotions)
       },
-      themes: ['conflict', 'pursuit', 'escape', 'primal fears'],
-      symbols: [{
-        symbol: 'cat',
-        meaning: CONTEXT_PATTERNS.animals.cat.symbolism,
-        context: 'chase scenario indicating internal conflict'
-      }],
-      interpretation: interpretation.trim(),
+      themes,
+      symbols,
+      interpretation,
       recommendations
     };
   },
@@ -218,54 +220,78 @@ export const dreamAnalyzer = {
   generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>): string {
     let interpretation = '';
 
-    // Add theme interpretations
+    // Theme interpretation
     themes.forEach(theme => {
       interpretation += DREAM_THEMES[theme as keyof typeof DREAM_THEMES].interpretation + ' ';
     });
 
-    // Add symbol interpretations
+    // Symbol interpretation
     if (symbols.length > 0) {
-      interpretation += 'The presence of ' + 
+      interpretation += 'Your dream features ' + 
         symbols.map(s => `${s.symbol} (${s.meaning})`).join(' and ') + 
-        ' suggests deeper meaning in these areas. ';
+        ', suggesting ' +
+        symbols.map(s => s.context).join('. ') + '. ';
     }
 
-    // Add emotional interpretation
+    // Emotional interpretation
     if (emotions.size > 0) {
-      interpretation += `The dream's emotional landscape of ${Array.from(emotions).join(', ')} ` +
-        'indicates your current emotional processing. ';
+      interpretation += `The presence of ${Array.from(emotions).join(', ')} emotions ` +
+        'suggests you are processing these feelings in your waking life. ';
     }
 
     return interpretation.trim() || 'This dream suggests a complex interplay of your thoughts and emotions.';
   },
 
-  generateRecommendations(themes: string[], emotions: Set<string>, sentiment: number): string[] {
-    const recommendations = [
+  generateRecommendations(
+    themes: string[], 
+    emotions: Set<string>, 
+    sentiment: number,
+    symbols: SymbolAnalysis[]
+  ): string[] {
+    const recommendations = new Set([
       'Record more details about this dream in your journal',
       'Reflect on how this dream relates to your current life situation'
-    ];
+    ]);
 
     // Theme-based recommendations
-    if (themes.includes('transformation')) {
-      recommendations.push('Consider what changes you might want to embrace in your life');
-    }
-    if (themes.includes('relationships')) {
-      recommendations.push('Reflect on your current relationships and connections');
-    }
-    if (themes.includes('conflict')) {
-      recommendations.push('Examine what conflicts in your life need resolution');
-    }
+    themes.forEach(theme => {
+      switch (theme) {
+        case 'transformation':
+          recommendations.add('Consider what changes you might want to embrace in your life');
+          recommendations.add('Look for areas where personal growth is occurring');
+          break;
+        case 'conflict':
+          recommendations.add('Examine what conflicts in your life need resolution');
+          recommendations.add('Consider if you're avoiding any important confrontations');
+          break;
+        case 'pursuit':
+          recommendations.add('Reflect on what you might be running from in your waking life');
+          recommendations.add('Consider what pressures you're currently facing');
+          break;
+        // Add more theme-specific recommendations...
+      }
+    });
+
+    // Symbol-based recommendations
+    symbols.forEach(symbol => {
+      if (symbol.symbol === 'water') {
+        recommendations.add('Pay attention to your emotional well-being');
+      }
+      if (symbol.symbol === 'cat') {
+        recommendations.add('Consider your relationship with independence and intuition');
+      }
+    });
 
     // Emotion-based recommendations
     if (emotions.has('fear') || emotions.has('anxiety')) {
-      recommendations.push('Practice relaxation techniques before bed');
-      recommendations.push('Consider discussing your concerns with someone you trust');
+      recommendations.add('Practice relaxation techniques before bed');
+      recommendations.add('Consider discussing your concerns with someone you trust');
     }
-    if (emotions.has('joy') || emotions.has('love')) {
-      recommendations.push('Celebrate and appreciate the positive aspects of your life');
+    if (emotions.has('anger')) {
+      recommendations.add('Explore healthy ways to express and process your anger');
     }
 
-    return recommendations;
+    return Array.from(recommendations);
   },
 
   generateDreamArtwork(themes: string[]): string {

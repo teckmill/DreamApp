@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
@@ -9,7 +9,7 @@ interface DreamPost {
   username: string;
   content: string;
   tags: string[];
-  likes: number;
+  likes: Set<string>; // Store user IDs who liked the post
   comments: Comment[];
   createdAt: Date;
   analysis?: {
@@ -26,6 +26,8 @@ interface Comment {
   createdAt: Date;
 }
 
+const POSTS_STORAGE_KEY = 'dreamscape_community_posts';
+
 export default function Community() {
   const { user } = useAuth();
   const [newPost, setNewPost] = useState('');
@@ -33,64 +35,88 @@ export default function Community() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'recent' | 'popular' | 'mine'>('recent');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
-
-  // Mock data - in a real app, this would come from your backend
-  const [posts, setPosts] = useState<DreamPost[]>([
-    {
-      id: '1',
-      userId: '123',
-      username: 'DreamExplorer',
-      content: 'Last night, I dreamed of flying over a crystal-clear ocean...',
-      tags: ['flying', 'ocean', 'lucid'],
-      likes: 42,
-      comments: [
-        {
-          id: 'c1',
-          userId: '456',
-          username: 'DreamInterpreter',
-          content: 'Flying dreams often represent freedom and transcendence!',
-          createdAt: new Date(),
-        }
-      ],
-      createdAt: new Date(),
-      analysis: {
-        themes: ['freedom', 'nature'],
-        sentiment: 'positive'
-      }
+  const [posts, setPosts] = useState<DreamPost[]>(() => {
+    const savedPosts = localStorage.getItem(POSTS_STORAGE_KEY);
+    if (savedPosts) {
+      const parsedPosts = JSON.parse(savedPosts);
+      return parsedPosts.map((post: any) => ({
+        ...post,
+        likes: new Set(post.likes),
+        createdAt: new Date(post.createdAt),
+        comments: post.comments.map((comment: any) => ({
+          ...comment,
+          createdAt: new Date(comment.createdAt)
+        }))
+      }));
     }
-  ]);
+    return [];
+  });
+
+  // Save posts to localStorage whenever they change
+  useEffect(() => {
+    try {
+      // Convert Sets to arrays and dates to strings for JSON serialization
+      const postsToSave = posts.map(post => ({
+        ...post,
+        likes: Array.from(post.likes),
+        createdAt: post.createdAt.toISOString(),
+        comments: post.comments.map(comment => ({
+          ...comment,
+          createdAt: comment.createdAt.toISOString()
+        }))
+      }));
+      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(postsToSave));
+    } catch (error) {
+      console.error('Error saving posts:', error);
+    }
+  }, [posts]);
 
   const handlePostSubmit = () => {
     if (!newPost.trim()) return;
 
-    const analysis = dreamAnalyzer.analyzeDream(newPost);
-    const newDreamPost: DreamPost = {
-      id: Date.now().toString(),
-      userId: user.id,
-      username: user.username,
-      content: newPost,
-      tags: selectedTags,
-      likes: 0,
-      comments: [],
-      createdAt: new Date(),
-      analysis: {
-        themes: analysis.themes,
-        sentiment: analysis.sentiment.label
-      }
-    };
+    try {
+      const analysis = dreamAnalyzer.analyzeDream(newPost);
+      const newDreamPost: DreamPost = {
+        id: Date.now().toString(),
+        userId: user.id,
+        username: user.username,
+        content: newPost,
+        tags: selectedTags,
+        likes: new Set(),
+        comments: [],
+        createdAt: new Date(),
+        analysis: {
+          themes: analysis.themes,
+          sentiment: analysis.sentiment.label
+        }
+      };
 
-    setPosts([newDreamPost, ...posts]);
-    setNewPost('');
-    setSelectedTags([]);
+      setPosts(prevPosts => [newDreamPost, ...prevPosts]);
+      setNewPost('');
+      setSelectedTags([]);
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
   };
 
   const toggleLike = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId ? { ...post, likes: post.likes + 1 } : post
-    ));
+    setPosts(posts.map(post => {
+      if (post.id === postId) {
+        const newLikes = new Set(post.likes);
+        if (newLikes.has(user.id)) {
+          newLikes.delete(user.id);
+        } else {
+          newLikes.add(user.id);
+        }
+        return { ...post, likes: newLikes };
+      }
+      return post;
+    }));
   };
 
   const addComment = (postId: string, comment: string) => {
+    if (!comment.trim()) return;
+    
     setPosts(posts.map(post => 
       post.id === postId ? {
         ...post,
@@ -103,6 +129,18 @@ export default function Community() {
         }]
       } : post
     ));
+  };
+
+  const handleShare = async (post: DreamPost) => {
+    try {
+      await navigator.share({
+        title: 'Dream Share',
+        text: `${post.username}'s dream: ${post.content}`,
+        url: window.location.href
+      });
+    } catch (error) {
+      console.log('Sharing failed', error);
+    }
   };
 
   const filteredPosts = posts
@@ -118,8 +156,8 @@ export default function Community() {
       return true;
     })
     .sort((a, b) => {
-      if (filter === 'popular') return b.likes - a.likes;
-      return b.createdAt.getTime() - a.createdAt.getTime();
+      if (filter === 'popular') return b.likes.size - a.likes.size;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
   const commonTags = ['lucid', 'nightmare', 'flying', 'falling', 'chase', 'water', 'family'];
@@ -283,10 +321,14 @@ export default function Community() {
               <div className="flex space-x-4">
                 <button
                   onClick={() => toggleLike(post.id)}
-                  className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  className={`flex items-center space-x-2 ${
+                    post.likes.has(user.id)
+                      ? 'text-red-500 hover:text-red-600'
+                      : 'text-gray-500 hover:text-red-500'
+                  }`}
                 >
-                  <Heart className="h-5 w-5" />
-                  <span>{post.likes}</span>
+                  <Heart className={`h-5 w-5 ${post.likes.has(user.id) ? 'fill-current' : ''}`} />
+                  <span>{post.likes.size}</span>
                 </button>
                 <button
                   onClick={() => setShowComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
@@ -296,7 +338,10 @@ export default function Community() {
                   <span>{post.comments.length}</span>
                 </button>
               </div>
-              <button className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400">
+              <button 
+                onClick={() => handleShare(post)}
+                className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
                 <Share2 className="h-5 w-5" />
                 <span>Share</span>
               </button>
@@ -313,7 +358,7 @@ export default function Community() {
                             {comment.username}
                           </span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(comment.createdAt).toLocaleDateString()}
+                            {new Date(comment.createdAt).toLocaleString()}
                           </span>
                         </div>
                         <p className="text-gray-700 dark:text-gray-300">
