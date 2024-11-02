@@ -1,4 +1,12 @@
 import nlp from 'compromise';
+import sentences from 'compromise-sentences';
+import numbers from 'compromise-numbers';
+import adjectives from 'compromise-adjectives';
+
+// Register plugins
+nlp.extend(sentences);
+nlp.extend(numbers);
+nlp.extend(adjectives);
 
 // Expanded word lists and patterns for better analysis
 const EMOTIONS = {
@@ -119,85 +127,103 @@ const CONTEXT_PATTERNS = {
 
 export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
+    const doc = nlp(text);
+    const sentences = doc.sentences().json();
+    const nouns = doc.nouns().json();
+    const verbs = doc.verbs().json();
+    const adjectives = doc.adjectives().json();
     const textLower = text.toLowerCase();
-    const words = textLower.split(/\W+/);
-    
-    // Analyze emotions with more context
+
+    // Enhanced emotion detection using NLP
     const emotions = new Set<string>();
     let sentimentScore = 0;
     let emotionCounts = 0;
 
-    // Enhanced emotion detection
-    Object.entries(EMOTIONS).forEach(([emotion, keywords]) => {
-      keywords.forEach(keyword => {
-        if (textLower.includes(keyword)) {
-          emotions.add(emotion);
-          sentimentScore += (emotion === 'joy' || emotion === 'love') ? 1 : 
-                           (emotion === 'fear' || emotion === 'anger' || emotion === 'sadness') ? -1 : 0;
-          emotionCounts++;
-        }
+    // Analyze emotions in context
+    sentences.forEach(sentence => {
+      const sentenceDoc = nlp(sentence.text);
+      Object.entries(EMOTIONS).forEach(([emotion, keywords]) => {
+        keywords.forEach(keyword => {
+          if (sentenceDoc.has(keyword)) {
+            // Check for negations
+            if (sentenceDoc.has('not ' + keyword) || sentenceDoc.has('no ' + keyword)) {
+              sentimentScore -= (emotion === 'joy' || emotion === 'love') ? 1 : -1;
+            } else {
+              emotions.add(emotion);
+              sentimentScore += (emotion === 'joy' || emotion === 'love') ? 1 : 
+                               (emotion === 'fear' || emotion === 'anger' || emotion === 'sadness') ? -1 : 0;
+            }
+            emotionCounts++;
+          }
+        });
       });
     });
 
-    // Normalize sentiment score
-    const normalizedScore = emotionCounts > 0 ? sentimentScore / emotionCounts : 0;
+    // Analyze action patterns
+    const actions = verbs.map(v => ({
+      verb: v.text,
+      isNegative: v.negative,
+      tense: v.tense,
+      subject: v.subject?.text || null
+    }));
 
-    // Get sentiment label with emotions
-    const sentimentLabel = normalizedScore > 0.2 ? 'positive' : 
-                          normalizedScore < -0.2 ? 'negative' : 'neutral';
+    // Analyze descriptive patterns
+    const descriptions = adjectives.map(adj => ({
+      adjective: adj.text,
+      comparative: adj.comparative,
+      superlative: adj.superlative
+    }));
 
-    // Detect themes directly from text
-    const themes = Object.entries(DREAM_THEMES)
-      .filter(([_, { keywords }]) => 
-        keywords.some(keyword => textLower.includes(keyword)))
-      .map(([theme]) => theme);
+    // Enhanced theme detection using NLP context
+    const themes = this.detectThemesWithContext(doc, actions, descriptions);
 
-    // Analyze symbols
-    const symbols = Object.entries(SYMBOLS)
-      .filter(([_, data]) => 'keywords' in data)
-      .map(([category, data]) => {
-        const symbolData = data as { keywords: string[], meaning: string };
-        if (symbolData.keywords.some(keyword => textLower.includes(keyword))) {
-          return {
-            symbol: category,
-            meaning: symbolData.meaning,
-            context: this.extractContext(text, symbolData.keywords)
-          };
-        }
-        return null;
-      })
-      .filter((symbol): symbol is SymbolAnalysis => symbol !== null);
+    // Advanced symbol analysis
+    const symbols = this.analyzeSymbolsWithContext(doc, nouns, actions, descriptions);
 
-    // Generate interpretation
-    const interpretation = this.generateInterpretation(themes, symbols, emotions);
+    // Generate comprehensive interpretation
+    const interpretation = this.generateInterpretation(themes, symbols, emotions, actions);
     
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(themes, emotions, normalizedScore, symbols);
+    // Generate personalized recommendations
+    const recommendations = this.generateRecommendations(themes, emotions, sentimentScore, symbols, actions);
 
     return {
       sentiment: {
-        score: normalizedScore,
-        label: sentimentLabel as 'positive' | 'neutral' | 'negative',
+        score: emotionCounts > 0 ? sentimentScore / emotionCounts : 0,
+        label: sentimentScore > 0.2 ? 'positive' : 
+               sentimentScore < -0.2 ? 'negative' : 'neutral',
         emotions: Array.from(emotions)
       },
       themes,
       symbols,
       interpretation,
-      recommendations
+      recommendations,
+      analysis: {
+        actions,
+        descriptions,
+        patterns: this.findRecurringPatterns(doc)
+      }
     };
   },
 
-  detectThemes(subjects: string[], actions: string[], adjectives: string[]): string[] {
+  detectThemesWithContext(doc: any, actions: any[], descriptions: any[]): string[] {
     const themes = new Set<string>();
     
-    // Analyze subject-action pairs for theme detection
-    subjects.forEach(subject => {
-      Object.entries(DREAM_THEMES).forEach(([theme, { keywords }]) => {
-        if (keywords.some(keyword => 
-          subject.toLowerCase().includes(keyword) ||
-          actions.some(action => action.toLowerCase().includes(keyword)) ||
-          adjectives.some(adj => adj.toLowerCase().includes(keyword))
-        )) {
+    Object.entries(DREAM_THEMES).forEach(([theme, { keywords }]) => {
+      // Check for theme keywords in context
+      keywords.forEach(keyword => {
+        const matches = doc.match(keyword);
+        if (matches.found) {
+          const context = matches.context();
+          // If keyword appears in a positive context
+          if (!context.has('not ' + keyword) && !context.has('no ' + keyword)) {
+            themes.add(theme);
+          }
+        }
+      });
+
+      // Check action patterns associated with themes
+      actions.forEach(action => {
+        if (keywords.some(k => action.verb.includes(k))) {
           themes.add(theme);
         }
       });
@@ -206,48 +232,80 @@ export const dreamAnalyzer = {
     return Array.from(themes);
   },
 
-  analyzeSymbols(subjects: string[], text: string): SymbolAnalysis[] {
+  analyzeSymbolsWithContext(doc: any, nouns: any[], actions: any[], descriptions: any[]): SymbolAnalysis[] {
     const symbols: SymbolAnalysis[] = [];
     
-    subjects.forEach(subject => {
-      Object.entries(SYMBOLS).forEach(([category, data]) => {
-        if ('keywords' in data) {
-          const symbolData = data as { keywords: string[], meaning: string };
-          if (symbolData.keywords.some(keyword => subject.toLowerCase().includes(keyword))) {
-            const context = this.extractContext(text, symbolData.keywords);
+    Object.entries(SYMBOLS).forEach(([category, data]) => {
+      if ('keywords' in data) {
+        const symbolData = data as { keywords: string[], meaning: string };
+        
+        symbolData.keywords.forEach(keyword => {
+          const matches = doc.match(keyword);
+          if (matches.found) {
+            const context = matches.context();
+            const relatedActions = actions.filter(a => 
+              context.has(a.verb) || context.has(a.subject)
+            );
+            const relatedDescriptions = descriptions.filter(d =>
+              context.has(d.adjective)
+            );
+
             symbols.push({
               symbol: category,
               meaning: symbolData.meaning,
-              context: this.enhanceContext(context, subject)
+              context: this.generateSymbolContext(
+                keyword,
+                relatedActions,
+                relatedDescriptions,
+                context.text()
+              )
             });
           }
-        }
-      });
+        });
+      }
     });
 
     return symbols;
   },
 
-  enhanceContext(context: string, subject: string): string {
-    const doc = nlp(context);
-    const actions = doc.match(subject).verbs().out('array');
-    const descriptions = doc.match(subject).adjectives().out('array');
+  generateSymbolContext(
+    symbol: string,
+    actions: any[],
+    descriptions: any[],
+    contextText: string
+  ): string {
+    const actionText = actions.length
+      ? `appears ${actions.map(a => a.verb).join(', ')}`
+      : '';
     
-    return `${subject} appears ${descriptions.length ? 'as ' + descriptions.join(', ') : ''} 
-            ${actions.length ? 'and ' + actions.join(', ') : ''} in the dream`;
+    const descriptionText = descriptions.length
+      ? `described as ${descriptions.map(d => d.adjective).join(', ')}`
+      : '';
+
+    return `${symbol} ${actionText} ${descriptionText} in context: "${contextText.trim()}"`;
   },
 
-  extractContext(text: string, keywords: string[]): string {
-    const sentences = text.split(/[.!?]+/);
-    for (const sentence of sentences) {
-      if (keywords.some(keyword => sentence.toLowerCase().includes(keyword))) {
-        return sentence.trim();
-      }
-    }
-    return '';
+  findRecurringPatterns(doc: any): any[] {
+    const patterns = [];
+    
+    // Find repeated phrases
+    const phrases = doc.ngrams().json();
+    const repeatedPhrases = phrases.filter(p => p.count > 1);
+    
+    // Find repeated actions
+    const repeatedActions = doc.verbs()
+      .json()
+      .filter(v => doc.match(v.text).found > 1);
+    
+    // Find repeated symbols
+    const repeatedSymbols = doc.nouns()
+      .json()
+      .filter(n => doc.match(n.text).found > 1);
+
+    return [...repeatedPhrases, ...repeatedActions, ...repeatedSymbols];
   },
 
-  generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>): string {
+  generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>, actions: any[]): string {
     let interpretation = '';
 
     // Theme interpretation
@@ -269,6 +327,11 @@ export const dreamAnalyzer = {
         'suggests you are processing these feelings in your waking life. ';
     }
 
+    // Action interpretation
+    if (actions.length > 0) {
+      interpretation += `The actions in your dream suggest ${actions.map(a => a.verb).join(', ')}. `;
+    }
+
     return interpretation.trim() || 'This dream suggests a complex interplay of your thoughts and emotions.';
   },
 
@@ -276,7 +339,8 @@ export const dreamAnalyzer = {
     themes: string[], 
     emotions: Set<string>, 
     sentiment: number,
-    symbols: SymbolAnalysis[]
+    symbols: SymbolAnalysis[],
+    actions: any[]
   ): string[] {
     const recommendations = new Set([
       'Record more details about this dream in your journal',

@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "compromise": "^14.14.2",
+    "compromise-adjectives": "^0.0.7",
+    "compromise-numbers": "^1.4.0",
+    "compromise-sentences": "^0.3.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
