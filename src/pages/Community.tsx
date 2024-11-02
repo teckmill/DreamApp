@@ -329,13 +329,13 @@ export default function Community() {
   const addComment = (postId: string, content: string) => {
     setPosts(posts.map(post => {
       if (post.id === postId) {
-        const newComment = {
+        const newComment: Comment = {
           id: Date.now().toString(),
           userId: user.id,
           username: user.username,
           content,
           createdAt: new Date(),
-          likes: new Set()
+          likes: new Set<string>()
         };
         return {
           ...post,
