@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import Subscription from './pages/Subscription';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   return (
@@ -43,6 +44,11 @@ function App() {
                 <Route path="/subscription" element={
                   <ProtectedRoute>
                     <Subscription />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AdminPanel />
                   </ProtectedRoute>
                 } />
               </Routes>
