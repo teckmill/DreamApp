@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PenSquare, Calendar, Tag, Mic, Send, Sparkles, Brain, Trash2, X } from 'lucide-react';
 import { dreamAnalyzer, type DreamAnalysis } from '../services/dreamAnalyzer';
 import { useAuth } from '../context/AuthContext';
+import { format } from 'date-fns';
 
 interface DreamEntry {
   id: string;
@@ -20,6 +21,8 @@ export default function DreamJournal() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [editingDream, setEditingDream] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // In a real app, this would be fetched from a backend
   const [dreams, setDreams] = useState<DreamEntry[]>(() => {
@@ -55,7 +58,7 @@ export default function DreamJournal() {
       userId: user.id,
       content: dreamText,
       tags: selectedTags,
-      date: new Date(),
+      date: selectedDate,
       analysis: dreamAnalysis
     };
 
@@ -98,6 +101,11 @@ export default function DreamJournal() {
 
   const commonTags = ['lucid', 'nightmare', 'flying', 'falling', 'chase', 'water', 'family'];
 
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setShowDatePicker(false);
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
@@ -138,10 +146,27 @@ export default function DreamJournal() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          <button className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-            <Calendar className="h-4 w-4 mr-2" />
-            Set Date
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              {format(selectedDate, 'MMM d, yyyy')}
+            </button>
+
+            {showDatePicker && (
+              <div className="absolute top-full left-0 mt-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-10">
+                <input
+                  type="date"
+                  value={format(selectedDate, 'yyyy-MM-dd')}
+                  onChange={(e) => handleDateSelect(new Date(e.target.value))}
+                  className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                />
+              </div>
+            )}
+          </div>
+          
           <button
             onClick={() => setIsRecording(!isRecording)}
             className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors ${
