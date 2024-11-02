@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Award, Settings, BarChart, AlertTriangle, Search, Filter, RefreshCw } from 'lucide-react';
+import { Users, Award, Settings, BarChart, AlertTriangle, Search, Filter, RefreshCw, Lock, Globe, Database, Gift, Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
 import { rewardService } from '../services/rewardService';
@@ -21,7 +21,7 @@ interface SystemStats {
 
 export default function AdminPanel() {
   const { user, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'reports' | 'settings' | 'content' | 'rewards'>('overview');
   const [userStats, setUserStats] = useState<UserStats>({
     totalUsers: 0,
     premiumUsers: 0,
@@ -37,6 +37,16 @@ export default function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userFilter, setUserFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [reportedContent, setReportedContent] = useState<any[]>([]);
+  const [systemSettings, setSystemSettings] = useState({
+    allowNewRegistrations: true,
+    maintenanceMode: false,
+    adCooldownPeriod: 1, // hours
+    maxDreamsPerUser: 100,
+    maxPostsPerUser: 50,
+    requireEmailVerification: true
+  });
 
   useEffect(() => {
     loadStats();
@@ -101,6 +111,30 @@ export default function AdminPanel() {
       .replace(/^./, str => str.toUpperCase()); // Capitalize first letter
   };
 
+  // User Management Functions
+  const handleUserAction = (userId: string, action: 'ban' | 'unban' | 'delete' | 'resetPassword' | 'upgrade' | 'downgrade') => {
+    // Implement user management actions
+  };
+
+  // Content Management Functions
+  const handleContentAction = (contentId: string, action: 'approve' | 'reject' | 'delete') => {
+    // Implement content moderation actions
+  };
+
+  // System Settings Functions
+  const handleSettingChange = (setting: string, value: any) => {
+    setSystemSettings(prev => ({
+      ...prev,
+      [setting]: value
+    }));
+    // In a real app, save to backend
+  };
+
+  // Reward Management Functions
+  const handleRewardAction = (userId: string, action: 'grant' | 'revoke', rewardType: string, amount: number) => {
+    // Implement reward management actions
+  };
+
   if (!isAdmin) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -126,14 +160,12 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex space-x-4 mb-8">
+      {/* Enhanced Navigation Tabs */}
+      <div className="flex flex-wrap gap-4 mb-8">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-            activeTab === 'overview'
-              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            activeTab === 'overview' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : ''
           }`}
         >
           <BarChart className="h-4 w-4" />
@@ -172,7 +204,182 @@ export default function AdminPanel() {
           <AlertTriangle className="h-4 w-4" />
           <span>Reports</span>
         </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+            activeTab === 'settings' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : ''
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+          <span>System Settings</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('content')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+            activeTab === 'content' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : ''
+          }`}
+        >
+          <Globe className="h-4 w-4" />
+          <span>Content Management</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('rewards')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+            activeTab === 'rewards' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : ''
+          }`}
+        >
+          <Gift className="h-4 w-4" />
+          <span>Reward Management</span>
+        </button>
       </div>
+
+      {/* System Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-semibold mb-6">System Settings</h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">User Registration</h3>
+                <p className="text-sm text-gray-500">Allow new users to register</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={systemSettings.allowNewRegistrations}
+                  onChange={(e) => handleSettingChange('allowNewRegistrations', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Maintenance Mode</h3>
+                <p className="text-sm text-gray-500">Temporarily disable access for non-admin users</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={systemSettings.maintenanceMode}
+                  onChange={(e) => handleSettingChange('maintenanceMode', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div>
+              <h3 className="font-medium mb-2">Ad Cooldown Period (hours)</h3>
+              <input
+                type="number"
+                value={systemSettings.adCooldownPeriod}
+                onChange={(e) => handleSettingChange('adCooldownPeriod', parseInt(e.target.value))}
+                className="w-full p-2 border rounded-lg"
+                min="0"
+                max="24"
+              />
+            </div>
+
+            <div>
+              <h3 className="font-medium mb-2">Maximum Dreams per User</h3>
+              <input
+                type="number"
+                value={systemSettings.maxDreamsPerUser}
+                onChange={(e) => handleSettingChange('maxDreamsPerUser', parseInt(e.target.value))}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content Management Tab */}
+      {activeTab === 'content' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-semibold mb-6">Content Management</h2>
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium mb-4">Reported Content</h3>
+              {reportedContent.length > 0 ? (
+                <div className="space-y-4">
+                  {reportedContent.map((content) => (
+                    <div key={content.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">{content.type}</p>
+                          <p className="text-sm text-gray-500">{content.content}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleContentAction(content.id, 'approve')}
+                            className="px-3 py-1 bg-green-100 text-green-600 rounded-lg"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleContentAction(content.id, 'reject')}
+                            className="px-3 py-1 bg-red-100 text-red-600 rounded-lg"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No reported content</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reward Management Tab */}
+      {activeTab === 'rewards' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-semibold mb-6">Reward Management</h2>
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium mb-4">Grant Rewards</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">User Email</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Enter user email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Reward Type</label>
+                  <select className="w-full p-2 border rounded-lg">
+                    <option value="premium_time">Premium Time</option>
+                    <option value="analysis_credits">Analysis Credits</option>
+                    <option value="dream_tokens">Dream Tokens</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Amount</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border rounded-lg"
+                    min="1"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg">
+                    Grant Reward
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Overview */}
       {activeTab === 'overview' && (
