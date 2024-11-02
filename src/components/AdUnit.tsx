@@ -46,8 +46,10 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      // Close immediately after reward is processed
-      setShowAd(false);
+      // Show completion state for 5 seconds then close
+      setTimeout(() => {
+        setShowAd(false);
+      }, 5000);
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
@@ -127,7 +129,7 @@ export default function AdUnit({
                    <>
                      Processing reward...
                      <br />
-                     <span className="text-xs italic">Please be patient while we process your reward</span>
+                     <span className="text-xs italic">Please wait while we process your reward. Window will close automatically.</span>
                    </>
                  ) : 
                  isCompleted ? 'Complete!' : 
