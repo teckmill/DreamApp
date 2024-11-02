@@ -47,9 +47,15 @@ export default function AdminPanel() {
     maxPostsPerUser: 50,
     requireEmailVerification: true
   });
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadStats();
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
   }, []);
 
   const loadStats = async () => {
@@ -104,6 +110,15 @@ export default function AdminPanel() {
     }
   };
 
+  const loadUsers = () => {
+    const allUsers = JSON.parse(localStorage.getItem('dreamscape_users') || '[]');
+    setUsers(allUsers.map((user: any) => ({
+      ...user,
+      subscription: subscriptionService.getUserSubscription(user.id),
+      rewards: rewardService.getUserRewards(user.id)
+    })));
+  };
+
   // Add function to format feature name
   const formatFeatureName = (feature: string) => {
     return feature
@@ -112,8 +127,27 @@ export default function AdminPanel() {
   };
 
   // User Management Functions
-  const handleUserAction = (userId: string, action: 'ban' | 'unban' | 'delete' | 'resetPassword' | 'upgrade' | 'downgrade') => {
-    // Implement user management actions
+  const handleUserAction = async (userId: string, action: string) => {
+    switch (action) {
+      case 'upgrade_premium':
+        await subscriptionService.upgradeTier(userId, 'premium');
+        break;
+      case 'upgrade_pro':
+        await subscriptionService.upgradeTier(userId, 'pro');
+        break;
+      case 'downgrade':
+        // Reset to basic
+        localStorage.removeItem(`subscription_${userId}`);
+        break;
+      case 'delete':
+        if (window.confirm('Are you sure you want to delete this user?')) {
+          const updatedUsers = users.filter(u => u.id !== userId);
+          localStorage.setItem('dreamscape_users', JSON.stringify(updatedUsers));
+          setUsers(updatedUsers);
+        }
+        break;
+    }
+    loadUsers(); // Refresh user list
   };
 
   // Content Management Functions
@@ -131,9 +165,30 @@ export default function AdminPanel() {
   };
 
   // Reward Management Functions
-  const handleRewardAction = (userId: string, action: 'grant' | 'revoke', rewardType: string, amount: number) => {
-    // Implement reward management actions
+  const handleRewardAction = async (userId: string, action: 'grant' | 'revoke', rewardType: string, amount: number) => {
+    if (action === 'grant') {
+      await rewardService.addReward(userId, {
+        type: rewardType as any,
+        amount,
+        source: 'admin'
+      });
+    }
+    loadUsers(); // Refresh user list
   };
+
+  // Filter users based on search and filter
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = userFilter === 'all' ||
+      (userFilter === 'premium' && user.subscription.name === 'Premium') ||
+      (userFilter === 'pro' && user.subscription.name === 'Professional') ||
+      (userFilter === 'basic' && user.subscription.name === 'Basic');
+
+    return matchesSearch && matchesFilter;
+  });
 
   if (!isAdmin) {
     return (
@@ -323,23 +378,54 @@ export default function AdminPanel() {
 
           {/* User list table with horizontal scroll on mobile */}
           <div className="overflow-x-auto">
-            <table className="min-w-full">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead>
                 <tr>
-                  <th className="px-4 py-2">User</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Actions</th>
+                  <th className="px-4 py-2 text-left">User</th>
+                  <th className="px-4 py-2 text-left">Email</th>
+                  <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-left">Subscription</th>
+                  <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {/* Add sample user rows */}
-                <tr>
-                  <td className="px-4 py-2">Sample User</td>
-                  <td className="px-4 py-2">Active</td>
-                  <td className="px-4 py-2">
-                    <button className="text-indigo-600">Edit</button>
-                  </td>
-                </tr>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {filteredUsers.map(user => (
+                  <tr key={user.id}>
+                    <td className="px-4 py-2">{user.username}</td>
+                    <td className="px-4 py-2">{user.email}</td>
+                    <td className="px-4 py-2">
+                      <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-sm">
+                        Active
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-1 rounded-full text-sm ${
+                        user.subscription.name === 'Professional'
+                          ? 'bg-purple-100 text-purple-600'
+                          : user.subscription.name === 'Premium'
+                          ? 'bg-indigo-100 text-indigo-600'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {user.subscription.name}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex space-x-2">
+                        <select
+                          onChange={(e) => handleUserAction(user.id, e.target.value)}
+                          className="px-2 py-1 text-sm border rounded"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Actions</option>
+                          <option value="upgrade_premium">Upgrade to Premium</option>
+                          <option value="upgrade_pro">Upgrade to Pro</option>
+                          <option value="downgrade">Downgrade to Basic</option>
+                          <option value="delete">Delete User</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -471,6 +557,120 @@ export default function AdminPanel() {
                 className="w-full p-2 border rounded-lg"
                 min="1"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Content Management Tab */}
+      {activeTab === 'content' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold mb-4">Reported Content</h3>
+            {reportedContent.length > 0 ? (
+              reportedContent.map((content, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-medium">{content.type}</p>
+                      <p className="text-sm text-gray-500">{content.content}</p>
+                      <p className="text-xs text-gray-400">Reported by: {content.reportedBy}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleContentAction(content.id, 'approve')}
+                        className="px-3 py-1 bg-green-100 text-green-600 rounded-lg"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleContentAction(content.id, 'remove')}
+                        className="px-3 py-1 bg-red-100 text-red-600 rounded-lg"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-8">No reported content</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add Reward Management Tab */}
+      {activeTab === 'rewards' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold mb-4">Grant Rewards</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Select User</label>
+                <select
+                  value={selectedUserId || ''}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="">Select a user</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.username} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedUserId && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Reward Type</label>
+                    <select
+                      className="w-full p-2 border rounded-lg"
+                      onChange={(e) => {
+                        const type = e.target.value;
+                        const amount = type === 'premium_time' ? 24 : 
+                                     type === 'analysis_credits' ? 5 : 100;
+                        handleRewardAction(selectedUserId, 'grant', type, amount);
+                      }}
+                    >
+                      <option value="">Select reward type</option>
+                      <option value="premium_time">Premium Time (24h)</option>
+                      <option value="analysis_credits">Analysis Credits (5)</option>
+                      <option value="dream_tokens">Dream Tokens (100)</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <h4 className="font-medium mb-2">Current Rewards</h4>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      {users.find(u => u.id === selectedUserId)?.rewards && (
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500">Premium Time</p>
+                            <p className="font-medium">
+                              {users.find(u => u.id === selectedUserId)?.rewards.premiumTimeLeft}h
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Analysis Credits</p>
+                            <p className="font-medium">
+                              {users.find(u => u.id === selectedUserId)?.rewards.analysisCredits}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Dream Tokens</p>
+                            <p className="font-medium">
+                              {users.find(u => u.id === selectedUserId)?.rewards.dreamTokens}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
