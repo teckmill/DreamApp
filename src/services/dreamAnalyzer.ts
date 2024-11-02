@@ -262,11 +262,11 @@ export const dreamAnalyzer = {
           break;
         case 'conflict':
           recommendations.add('Examine what conflicts in your life need resolution');
-          recommendations.add('Consider if you're avoiding any important confrontations');
+          recommendations.add('Consider if you\'re avoiding any important confrontations');
           break;
         case 'pursuit':
           recommendations.add('Reflect on what you might be running from in your waking life');
-          recommendations.add('Consider what pressures you're currently facing');
+          recommendations.add('Consider what pressures you\'re currently facing');
           break;
         // Add more theme-specific recommendations...
       }
