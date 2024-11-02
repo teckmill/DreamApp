@@ -170,7 +170,7 @@ export default function AdminPanel() {
       await rewardService.addReward(userId, {
         type: rewardType as any,
         amount,
-        source: 'admin'
+        source: 'achievement'
       });
     }
     loadUsers(); // Refresh user list
@@ -584,7 +584,7 @@ export default function AdminPanel() {
                         Approve
                       </button>
                       <button
-                        onClick={() => handleContentAction(content.id, 'remove')}
+                        onClick={() => handleContentAction(content.id, 'delete')}
                         className="px-3 py-1 bg-red-100 text-red-600 rounded-lg"
                       >
                         Remove
