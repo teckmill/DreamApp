@@ -68,14 +68,29 @@ export default function Subscription() {
   const handleVideoComplete = async () => {
     try {
       const reward = await adService.watchAd('long');
+      
+      // Add the reward with proper amounts
       await rewardService.addReward(user.id, {
-        ...reward,
+        type: 'premium_time',
+        amount: 24, // 24 hours of premium time
+        source: 'ad'
+      });
+
+      await rewardService.addReward(user.id, {
+        type: 'dream_tokens',
+        amount: 100, // Give 100 dream tokens
+        source: 'ad'
+      });
+
+      await rewardService.addReward(user.id, {
+        type: 'analysis_credits',
+        amount: 5, // Give 5 analysis credits
         source: 'ad'
       });
       
       adService.recordAdView(user.id, reward);
       
-      setSuccess(`Earned ${reward.amount} ${reward.type.replace('_', ' ')}!`);
+      setSuccess('Earned premium rewards! Check your profile for details.');
       setAdCooldown(true);
       setTimeout(() => setAdCooldown(false), 3600000); // 1 hour cooldown
     } catch (error) {
