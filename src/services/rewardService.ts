@@ -12,6 +12,7 @@ interface UserRewards {
   analysisCredits: number;
   lastDailyReward: string;
   currentStreak: number;
+  lastUpdate?: string;
 }
 
 const DAILY_REWARDS = {
@@ -41,11 +42,29 @@ export const rewardService = {
         currentStreak: 0
       };
     }
-    return JSON.parse(rewards);
+
+    const parsedRewards = JSON.parse(rewards);
+    
+    // Update premium time based on expiration
+    if (parsedRewards.premiumTimeLeft > 0) {
+      const lastUpdate = new Date(parsedRewards.lastUpdate || Date.now());
+      const now = new Date();
+      const hoursPassed = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60));
+      parsedRewards.premiumTimeLeft = Math.max(0, parsedRewards.premiumTimeLeft - hoursPassed);
+      parsedRewards.lastUpdate = now.toISOString();
+      this.saveUserRewards(parsedRewards);
+    }
+
+    return parsedRewards;
   },
 
   saveUserRewards(rewards: UserRewards): void {
-    localStorage.setItem(`rewards_${rewards.userId}`, JSON.stringify(rewards));
+    // Always update the lastUpdate timestamp when saving
+    const updatedRewards = {
+      ...rewards,
+      lastUpdate: new Date().toISOString()
+    };
+    localStorage.setItem(`rewards_${rewards.userId}`, JSON.stringify(updatedRewards));
   },
 
   async claimDailyReward(userId: string): Promise<Reward[]> {
@@ -146,7 +165,7 @@ export const rewardService = {
         rewards.dreamTokens += reward.amount;
         break;
       case 'premium_time':
-        rewards.premiumTimeLeft += reward.amount;
+        rewards.premiumTimeLeft = (rewards.premiumTimeLeft || 0) + reward.amount;
         break;
       case 'theme_unlock':
         rewards.unlockedThemes.push(`theme_${rewards.unlockedThemes.length + 1}`);
@@ -156,6 +175,8 @@ export const rewardService = {
         break;
     }
 
+    // Update the lastUpdate timestamp
+    rewards.lastUpdate = new Date().toISOString();
     this.saveUserRewards(rewards);
   },
 
