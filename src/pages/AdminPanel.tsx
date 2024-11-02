@@ -225,41 +225,51 @@ export default function AdminPanel() {
   };
 
   // Enhanced reward management function
-  const handleRewardAction = async (userId: string, rewardType: string) => {
+  const handleRewardAction = async (userId: string, action: 'grant' | 'revoke', rewardType: string, amount: number) => {
     try {
-      let amount = 0;
-      let type: any;
-
-      switch (rewardType) {
-        case 'premium_time':
-          amount = 24;
-          type = 'premium_time';
-          break;
-        case 'analysis_credits':
-          amount = 5;
-          type = 'analysis_credits';
-          break;
-        case 'dream_tokens':
-          amount = 100;
-          type = 'dream_tokens';
-          break;
-        default:
-          throw new Error('Invalid reward type');
+      if (action === 'grant') {
+        await rewardService.addReward(userId, {
+          type: rewardType as any,
+          amount,
+          source: 'achievement'
+        });
+      } else {
+        // Revoke rewards
+        await rewardService.removeReward(userId, {
+          type: rewardType as any,
+          amount
+        });
       }
-
-      await rewardService.addReward(userId, {
-        type,
-        amount,
-        source: 'achievement' // Using 'achievement' as the source
-      });
 
       // Refresh users list to update displayed rewards
       loadUsers();
       
-      setSuccess(`Successfully granted ${amount} ${type.replace('_', ' ')} to user`);
+      setSuccess(`Successfully ${action}ed ${amount} ${rewardType.replace('_', ' ')} ${action === 'grant' ? 'to' : 'from'} user`);
     } catch (error) {
-      setError('Failed to grant reward');
-      console.error('Error granting reward:', error);
+      setError(`Failed to ${action} reward`);
+      console.error(`Error ${action}ing reward:`, error);
+    }
+  };
+
+  // Add function to handle subscription changes
+  const handleSubscriptionChange = async (userId: string, action: string) => {
+    try {
+      switch (action) {
+        case 'remove_premium':
+          await subscriptionService.removePremium(userId);
+          break;
+        case 'remove_all_rewards':
+          await rewardService.removeAllRewards(userId);
+          break;
+        default:
+          await subscriptionService.upgradeTier(userId, action.replace('upgrade_', '') as any);
+          break;
+      }
+      loadUsers();
+      setSuccess('Successfully updated user subscription');
+    } catch (error) {
+      setError('Failed to update subscription');
+      console.error('Error updating subscription:', error);
     }
   };
 
@@ -729,7 +739,7 @@ export default function AdminPanel() {
       {activeTab === 'rewards' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold mb-4">Grant Rewards</h3>
+            <h3 className="text-lg font-semibold mb-4">Manage User Rewards</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Select User</label>
@@ -750,16 +760,49 @@ export default function AdminPanel() {
               {selectedUserId && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Reward Type</label>
-                    <select
-                      className="w-full p-2 border rounded-lg"
-                      onChange={(e) => handleRewardAction(selectedUserId, e.target.value)}
-                    >
-                      <option value="">Select reward type</option>
-                      <option value="premium_time">Premium Time (24h)</option>
-                      <option value="analysis_credits">Analysis Credits (5)</option>
-                      <option value="dream_tokens">Dream Tokens (100)</option>
-                    </select>
+                    <label className="block text-sm font-medium mb-2">Reward Action</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        className="w-full p-2 border rounded-lg"
+                        onChange={(e) => {
+                          const [action, type, amount] = e.target.value.split('|');
+                          handleRewardAction(selectedUserId, action as 'grant' | 'revoke', type, parseInt(amount));
+                        }}
+                      >
+                        <option value="">Grant Reward</option>
+                        <option value="grant|premium_time|24">Add 24h Premium</option>
+                        <option value="grant|analysis_credits|5">Add 5 Credits</option>
+                        <option value="grant|dream_tokens|100">Add 100 Tokens</option>
+                      </select>
+                      <select
+                        className="w-full p-2 border rounded-lg"
+                        onChange={(e) => {
+                          const [action, type, amount] = e.target.value.split('|');
+                          handleRewardAction(selectedUserId, action as 'grant' | 'revoke', type, parseInt(amount));
+                        }}
+                      >
+                        <option value="">Remove Reward</option>
+                        <option value="revoke|premium_time|24">Remove 24h Premium</option>
+                        <option value="revoke|analysis_credits|5">Remove 5 Credits</option>
+                        <option value="revoke|dream_tokens|100">Remove 100 Tokens</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">Subscription Actions</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        className="w-full p-2 border rounded-lg"
+                        onChange={(e) => handleSubscriptionChange(selectedUserId, e.target.value)}
+                      >
+                        <option value="">Manage Subscription</option>
+                        <option value="upgrade_premium">Upgrade to Premium</option>
+                        <option value="upgrade_pro">Upgrade to Pro</option>
+                        <option value="remove_premium">Remove Premium Status</option>
+                        <option value="remove_all_rewards">Remove All Rewards</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="md:col-span-2">

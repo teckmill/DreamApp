@@ -192,5 +192,33 @@ export const rewardService = {
     
     rewards.analysisCredits--;
     this.saveUserRewards(rewards);
+  },
+
+  async removeReward(userId: string, reward: { type: string; amount: number }): Promise<void> {
+    const rewards = this.getUserRewards(userId);
+
+    switch (reward.type) {
+      case 'dream_tokens':
+        rewards.dreamTokens = Math.max(0, rewards.dreamTokens - reward.amount);
+        break;
+      case 'premium_time':
+        rewards.premiumTimeLeft = Math.max(0, rewards.premiumTimeLeft - reward.amount);
+        break;
+      case 'analysis_credits':
+        rewards.analysisCredits = Math.max(0, rewards.analysisCredits - reward.amount);
+        break;
+    }
+
+    rewards.lastUpdate = new Date().toISOString();
+    this.saveUserRewards(rewards);
+  },
+
+  async removeAllRewards(userId: string): Promise<void> {
+    const rewards = this.getUserRewards(userId);
+    rewards.dreamTokens = 0;
+    rewards.premiumTimeLeft = 0;
+    rewards.analysisCredits = 0;
+    rewards.lastUpdate = new Date().toISOString();
+    this.saveUserRewards(rewards);
   }
 }; 

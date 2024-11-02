@@ -185,5 +185,9 @@ export const subscriptionService = {
       default:
         return subscription.features[feature];
     }
+  },
+
+  async removePremium(userId: string): Promise<void> {
+    localStorage.removeItem(`subscription_${userId}`);
   }
 }; 
