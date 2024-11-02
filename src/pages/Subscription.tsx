@@ -1,11 +1,69 @@
-import React from 'react';
-import { Check, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, X, CreditCard, Loader, Play, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptionService';
+import { paymentService } from '../services/paymentService';
+import { adService } from '../services/adService';
 
 export default function Subscription() {
   const { user } = useAuth();
   const currentTier = subscriptionService.getUserSubscription(user.id);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const [adCooldown, setAdCooldown] = useState(!adService.canWatchAd(user.id));
+
+  const handleUpgrade = async (tierKey: string, tier: any) => {
+    setProcessing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Process payment
+      const paymentSuccessful = await paymentService.processPayment(tierKey);
+      
+      if (paymentSuccessful) {
+        // Update subscription
+        await paymentService.updateSubscription(user.id, tierKey);
+        setSuccess(`Successfully upgraded to ${tier.name}!`);
+        
+        // Refresh page after 2 seconds
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    } catch (err) {
+      setError('Payment failed. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleWatchAd = async () => {
+    if (!adService.canWatchAd(user.id)) {
+      return;
+    }
+
+    setIsWatchingAd(true);
+    try {
+      const reward = await adService.watchAd();
+      adService.recordAdView(user.id);
+      
+      // Apply reward
+      if (reward.type === 'premium_time') {
+        await paymentService.updateSubscription(user.id, 'premium');
+        setSuccess(`Earned ${reward.amount} hours of premium access!`);
+      }
+      
+      setAdCooldown(true);
+      setTimeout(() => setAdCooldown(false), 3600000); // 1 hour cooldown
+    } catch (error) {
+      setError('Failed to complete ad view. Please try again.');
+    } finally {
+      setIsWatchingAd(false);
+    }
+  };
 
   const features = {
     advancedAnalysis: 'Advanced Dream Analysis',
@@ -25,6 +83,18 @@ export default function Subscription() {
           Select the plan that best fits your dream exploration needs
         </p>
       </div>
+
+      {error && (
+        <div className="mb-8 p-4 bg-red-100 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-8 p-4 bg-green-100 text-green-700 rounded-lg">
+          {success}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-8">
         {Object.entries(SUBSCRIPTION_TIERS).map(([key, tier]) => (
@@ -86,17 +156,80 @@ export default function Subscription() {
             </div>
 
             <button
-              className={`w-full py-3 px-6 rounded-lg text-center ${
+              onClick={() => handleUpgrade(key, tier)}
+              disabled={currentTier.name === tier.name || processing}
+              className={`w-full py-3 px-6 rounded-lg text-center flex items-center justify-center space-x-2 ${
                 currentTier.name === tier.name
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-default'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              disabled={currentTier.name === tier.name}
             >
-              {currentTier.name === tier.name ? 'Current Plan' : 'Upgrade'}
+              {processing ? (
+                <>
+                  <Loader className="h-5 w-5 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : currentTier.name === tier.name ? (
+                'Current Plan'
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  <span>Upgrade</span>
+                </>
+              )}
             </button>
           </div>
         ))}
+      </div>
+
+      <div className="mt-12 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          Watch Ads for Premium Access
+        </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          Earn premium features by watching short ads
+        </p>
+
+        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              Watch an Ad
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Get 24 hours of premium access
+            </p>
+          </div>
+          <button
+            onClick={handleWatchAd}
+            disabled={isWatchingAd || adCooldown}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+              isWatchingAd || adCooldown
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+          >
+            {isWatchingAd ? (
+              <>
+                <Loader className="h-5 w-5 animate-spin" />
+                <span>Watching Ad...</span>
+              </>
+            ) : adCooldown ? (
+              <>
+                <Clock className="h-5 w-5" />
+                <span>Cooldown</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-5 w-5" />
+                <span>Watch Ad</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          * You can watch one ad per hour
+        </div>
       </div>
     </div>
   );
