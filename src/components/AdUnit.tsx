@@ -41,7 +41,11 @@ export default function AdUnit({
     
     // Make sure we call onComplete to trigger the subscription update
     if (onComplete) {
-      await onComplete();
+      try {
+        await onComplete();
+      } catch (error) {
+        console.error('Error completing ad:', error);
+      }
     }
   };
 
