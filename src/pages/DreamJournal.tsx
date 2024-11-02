@@ -151,31 +151,40 @@ export default function DreamJournal() {
     setShowDatePicker(false);
   };
 
-  // Add export functionality
+  // Enhanced export functionality
   const handleExport = () => {
     if (!subscriptionService.hasFeature(user.id, 'exportData')) {
-      alert('Export is a premium feature. Upgrade to access this feature!');
+      alert('Export is a premium feature. Watch ads or upgrade to access this feature!');
       return;
     }
 
-    const exportData = {
-      dreams,
-      exportDate: new Date().toISOString(),
-      user: {
-        username: user.username,
-        id: user.id
-      }
-    };
+    try {
+      const exportData = {
+        dreams: dreams.map(dream => ({
+          ...dream,
+          date: new Date(dream.date).toISOString(),
+          tags: Array.from(dream.tags)
+        })),
+        exportDate: new Date().toISOString(),
+        user: {
+          username: user.username,
+          id: user.id
+        }
+      };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dreamscape-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dreamscape-export-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export dreams. Please try again.');
+    }
   };
 
   const userRewards = rewardService.getUserRewards(user.id);
@@ -467,16 +476,14 @@ export default function DreamJournal() {
                 <span className={currentTier.features.exportData ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
                   • Export Data
                 </span>
-              </li>
-              <li className="flex items-center">
-                <span className={currentTier.features.aiArtGeneration ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                  • AI Art Generation
-                </span>
-              </li>
-              <li className="flex items-center">
-                <span className={currentTier.features.customThemes ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}>
-                  • Custom Themes
-                </span>
+                {currentTier.features.exportData && (
+                  <button
+                    onClick={handleExport}
+                    className="ml-2 text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Export Now
+                  </button>
+                )}
               </li>
             </ul>
           </div>
