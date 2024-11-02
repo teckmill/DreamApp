@@ -21,8 +21,9 @@ export default function Subscription() {
   }, [user.id]);
 
   const handleWatchAd = async () => {
-    if (!adService.canWatchAd(user.id)) {
-      setError('Please wait before watching another ad');
+    const adStatus = adService.canWatchAd(user.id);
+    if (!adStatus.canWatch) {
+      setError(`Please wait ${adStatus.timeLeft} seconds before watching another ad`);
       return;
     }
 

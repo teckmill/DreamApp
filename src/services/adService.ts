@@ -119,17 +119,26 @@ export const adService = {
     console.log(`Granting achievement reward: ${reward.amount} ${reward.type} to user ${userId}`);
   },
 
-  canWatchAd(userId: string): boolean {
+  canWatchAd(userId: string): { canWatch: boolean; timeLeft?: number } {
     const lastViewed = localStorage.getItem(`ad_history_${userId}`);
-    if (!lastViewed) return true;
+    if (!lastViewed) return { canWatch: true };
 
     const { rewards } = JSON.parse(lastViewed);
-    if (rewards.length === 0) return true;
+    if (rewards.length === 0) return { canWatch: true };
 
     const lastViewedDate = new Date(rewards[rewards.length - 1].timestamp);
     const secondsSinceLastAd = (Date.now() - lastViewedDate.getTime()) / 1000;
+    const cooldownPeriod = 30; // 30 seconds cooldown
     
-    return secondsSinceLastAd >= 10; // 10 seconds cooldown instead of 1 hour
+    if (secondsSinceLastAd >= cooldownPeriod) {
+      return { canWatch: true };
+    } else {
+      const timeLeft = Math.ceil(cooldownPeriod - secondsSinceLastAd);
+      return { 
+        canWatch: false, 
+        timeLeft 
+      };
+    }
   },
 
   getProgress(userId: string): { watched: number; achievements: any[] } {
