@@ -6,7 +6,7 @@ interface AdUnitProps {
   format?: 'auto' | 'fluid' | 'rectangle';
   layout?: 'in-article' | 'in-feed';
   className?: string;
-  onComplete?: () => void;
+  onComplete?: () => Promise<void>;
   isVideo?: boolean;
 }
 
@@ -25,7 +25,6 @@ export default function AdUnit({
 
   useEffect(() => {
     return () => {
-      // Cleanup interval on unmount
       if (intervalId) {
         clearInterval(intervalId);
       }
@@ -35,32 +34,33 @@ export default function AdUnit({
   const handleVideoComplete = async () => {
     if (intervalId) {
       clearInterval(intervalId);
+      setIntervalId(null);
     }
     setIsPlaying(false);
     setShowAd(false);
     
-    // Make sure we call onComplete to trigger the subscription update
-    if (onComplete) {
-      try {
+    try {
+      if (onComplete) {
         await onComplete();
-      } catch (error) {
-        console.error('Error completing ad:', error);
       }
+    } catch (error) {
+      console.error('Error completing ad:', error);
     }
   };
 
   const startVideo = () => {
+    if (isPlaying) return; // Prevent multiple starts
+    
     setIsPlaying(true);
     const interval = setInterval(() => {
       setVideoProgress(prev => {
-        const newProgress = prev + 2;
-        if (newProgress >= 100) {
+        if (prev >= 100) {
           handleVideoComplete();
           return 100;
         }
-        return newProgress;
+        return prev + 2;
       });
-    }, 100);
+    }, 100); // Faster for testing, adjust as needed
     setIntervalId(interval);
   };
 
