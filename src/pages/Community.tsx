@@ -145,20 +145,35 @@ export default function Community() {
 
   const filteredPosts = posts
     .filter(post => {
-      if (searchQuery) {
-        return post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          post.content.toLowerCase().includes(query) ||
+          post.tags.some(tag => tag.toLowerCase().includes(query)) ||
+          post.username.toLowerCase().includes(query)
+        );
       }
       return true;
     })
     .filter(post => {
-      if (filter === 'mine') return post.userId === user.id;
+      if (filter === 'mine') {
+        return post.userId === user.id;
+      }
       return true;
     })
     .sort((a, b) => {
-      if (filter === 'popular') return b.likes.size - a.likes.size;
+      if (filter === 'popular') {
+        const likeDiff = b.likes.size - a.likes.size;
+        if (likeDiff !== 0) return likeDiff;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
+  useEffect(() => {
+    console.log('Current filter:', filter);
+    console.log('Filtered posts:', filteredPosts);
+  }, [filter, filteredPosts]);
 
   const commonTags = ['lucid', 'nightmare', 'flying', 'falling', 'chase', 'water', 'family'];
 

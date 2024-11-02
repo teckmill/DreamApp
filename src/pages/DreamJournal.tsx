@@ -34,9 +34,16 @@ export default function DreamJournal() {
 
   const handleAnalyze = () => {
     if (!dreamText.trim()) return;
-    const result = dreamAnalyzer.analyzeDream(dreamText);
-    setAnalysis(result);
-    setShowAnalysis(true);
+    
+    try {
+      const result = dreamAnalyzer.analyzeDream(dreamText);
+      console.log('Analysis result:', result); // Add debug logging
+      setAnalysis(result);
+      setShowAnalysis(true);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    } catch (error) {
+      console.error('Analysis error:', error);
+    }
   };
 
   const handleSave = () => {
