@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Play, X } from 'lucide-react';
+import { Play, X, Loader } from 'lucide-react';
 
 interface AdUnitProps {
   slot: string;
@@ -20,34 +20,46 @@ export default function AdUnit({
 }: AdUnitProps) {
   const [showAd, setShowAd] = useState(!isVideo);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!isVideo) {
-      try {
-        // @ts-ignore
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (error) {
-        console.error('Error loading ad:', error);
+    return () => {
+      // Cleanup interval on unmount
+      if (intervalId) {
+        clearInterval(intervalId);
       }
-    }
-  }, [isVideo]);
+    };
+  }, [intervalId]);
 
   const handleVideoComplete = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    setIsPlaying(false);
     setShowAd(false);
     onComplete?.();
   };
 
-  const simulateVideoProgress = () => {
-    let progress = 0;
+  const startVideo = () => {
+    setIsPlaying(true);
     const interval = setInterval(() => {
-      progress += 1;
-      setVideoProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        handleVideoComplete();
-      }
-    }, 300); // 30 seconds total
-    return () => clearInterval(interval);
+      setVideoProgress(prev => {
+        if (prev >= 100) {
+          handleVideoComplete();
+          return 100;
+        }
+        return prev + 2; // Increment by 2 every 100ms for a 5-second video
+      });
+    }, 100);
+    setIntervalId(interval);
+  };
+
+  const handleClose = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    setShowAd(false);
   };
 
   if (isVideo) {
@@ -59,41 +71,41 @@ export default function AdUnit({
               Watch Video for Premium Access
             </h3>
             <button 
-              onClick={() => setShowAd(false)}
+              onClick={handleClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
           
-          {showAd && (
-            <div className="relative">
-              <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+          <div className="relative">
+            <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+              {isPlaying ? (
+                <Loader className="h-12 w-12 text-gray-400 animate-spin" />
+              ) : (
                 <Play className="h-12 w-12 text-gray-400" />
-              </div>
-              <div className="mt-4">
-                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
-                  <div 
-                    className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-                    style={{ width: `${videoProgress}%` }}
-                  />
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-                  {videoProgress < 100 ? 'Watching video...' : 'Complete!'}
-                </p>
-              </div>
-              {videoProgress === 0 && (
-                <button
-                  onClick={() => {
-                    simulateVideoProgress();
-                  }}
-                  className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Start Watching
-                </button>
               )}
             </div>
-          )}
+            <div className="mt-4">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                <div 
+                  className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${videoProgress}%` }}
+                />
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
+                {isPlaying ? 'Watching video...' : videoProgress === 100 ? 'Complete!' : 'Ready to watch'}
+              </p>
+            </div>
+            {!isPlaying && videoProgress < 100 && (
+              <button
+                onClick={startVideo}
+                className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Start Watching
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
