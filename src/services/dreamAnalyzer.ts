@@ -146,22 +146,38 @@ export const dreamAnalyzer = {
     const sentimentLabel = normalizedScore > 0.2 ? 'positive' : 
                           normalizedScore < -0.2 ? 'negative' : 'neutral';
 
-    // Detect themes with better context
-    const themes = this.detectThemes(subjects, actions, adjectives);
+    // Detect themes directly from text
+    const themes = Object.entries(DREAM_THEMES)
+      .filter(([_, { keywords }]) => 
+        keywords.some(keyword => textLower.includes(keyword)))
+      .map(([theme]) => theme);
 
-    // Analyze symbols with better context
-    const symbols = this.analyzeSymbols(subjects, text);
+    // Analyze symbols
+    const symbols = Object.entries(SYMBOLS)
+      .filter(([_, data]) => 'keywords' in data)
+      .map(([category, data]) => {
+        const symbolData = data as { keywords: string[], meaning: string };
+        if (symbolData.keywords.some(keyword => textLower.includes(keyword))) {
+          return {
+            symbol: category,
+            meaning: symbolData.meaning,
+            context: this.extractContext(text, symbolData.keywords)
+          };
+        }
+        return null;
+      })
+      .filter((symbol): symbol is SymbolAnalysis => symbol !== null);
 
-    // Generate interpretation using NLP insights
-    const interpretation = this.generateInterpretation(themes, symbols, emotions, subjects, actions);
+    // Generate interpretation
+    const interpretation = this.generateInterpretation(themes, symbols, emotions);
     
-    // Generate targeted recommendations
-    const recommendations = this.generateRecommendations(themes, emotions, sentimentScore, symbols);
+    // Generate recommendations
+    const recommendations = this.generateRecommendations(themes, emotions, normalizedScore, symbols);
 
     return {
       sentiment: {
         score: normalizedScore,
-        label: sentimentLabel,
+        label: sentimentLabel as 'positive' | 'neutral' | 'negative',
         emotions: Array.from(emotions)
       },
       themes,
@@ -231,7 +247,7 @@ export const dreamAnalyzer = {
     return '';
   },
 
-  generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>, subjects: string[], actions: string[]): string {
+  generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>): string {
     let interpretation = '';
 
     // Theme interpretation
