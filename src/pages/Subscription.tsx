@@ -37,7 +37,7 @@ export default function Subscription() {
       const adReward = await adService.watchAd('long');
       adService.recordAdView(user.id, adReward);
       
-      // Add the rewards immediately after recording the ad view
+      // Add the rewards
       await Promise.all([
         rewardService.addReward(user.id, {
           type: 'premium_time',
@@ -60,11 +60,11 @@ export default function Subscription() {
       const newAdHistory = adService.getAdHistory(user.id);
       setAdHistory(newAdHistory);
       
-      // Check if user has unlocked a new tier
-      if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
-        await subscriptionService.upgradeTier(user.id, 'pro');
-      } else if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
+      // Check if user should progress to next tier
+      if (currentTier.name === 'Basic' && newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
         await subscriptionService.upgradeTier(user.id, 'premium');
+      } else if (currentTier.name === 'Premium' && newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
+        await subscriptionService.upgradeTier(user.id, 'pro');
       }
       
       setSuccess('Earned premium rewards! Check your profile for details.');
@@ -91,10 +91,16 @@ export default function Subscription() {
 
   const shouldShowWatchButton = (tierKey: string) => {
     const currentTierName = currentTier.name;
+    const adsWatched = adHistory.totalAdsWatched || 0;
+
     if (tierKey === 'free') return false;
     if (currentTierName === 'Professional') return false;
-    if (currentTierName === 'Premium' && tierKey === 'premium') return false;
-    return true;
+    if (currentTierName === 'Premium') {
+      // Only show button for pro tier if not yet reached pro requirement
+      return tierKey === 'pro' && adsWatched < SUBSCRIPTION_TIERS.pro.adRequirement;
+    }
+    // For basic users, only show button for premium until they reach premium
+    return tierKey === 'premium' && adsWatched < SUBSCRIPTION_TIERS.premium.adRequirement;
   };
 
   return (
