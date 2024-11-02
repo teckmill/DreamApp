@@ -243,26 +243,5 @@ export const dreamAnalyzer = {
       interpretation,
       recommendations: Array.from(new Set(recommendations))
     };
-  },
-
-  generateDreamArtwork(themes: string[]): string {
-    const artElements = {
-      journey: '🛣️',
-      chase: '🏃',
-      vehicle: '🚗',
-      flying: '🦋',
-      water: '🌊',
-      nature: '🌿',
-      relationships: '💫',
-      transformation: '🦋',
-      default: '💭 ✨ 🌙'
-    };
-
-    const themeArt = themes
-      .map(theme => artElements[theme as keyof typeof artElements])
-      .filter(Boolean)
-      .join(' ');
-
-    return themeArt || artElements.default;
   }
 }; 
