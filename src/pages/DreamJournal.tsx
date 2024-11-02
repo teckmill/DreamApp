@@ -4,6 +4,8 @@ import { dreamAnalyzer, type DreamAnalysis } from '../services/dreamAnalyzer';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { subscriptionService } from '../services/subscriptionService';
+import { rewardService } from '../services/rewardService';
 
 interface DreamEntry {
   id: string;
