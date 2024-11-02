@@ -287,22 +287,47 @@ export const dreamAnalyzer = {
 
   findRecurringPatterns(doc: any): any[] {
     const patterns = [];
+    const text = doc.text().toLowerCase();
+    const words = text.split(/\s+/);
     
-    // Find repeated phrases
-    const phrases = doc.ngrams().json();
-    const repeatedPhrases = phrases.filter(p => p.count > 1);
-    
-    // Find repeated actions
-    const repeatedActions = doc.verbs()
-      .json()
-      .filter(v => doc.match(v.text).found > 1);
-    
-    // Find repeated symbols
-    const repeatedSymbols = doc.nouns()
-      .json()
-      .filter(n => doc.match(n.text).found > 1);
+    // Find repeated words
+    const wordFrequency: { [key: string]: number } = {};
+    words.forEach(word => {
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+    });
 
-    return [...repeatedPhrases, ...repeatedActions, ...repeatedSymbols];
+    // Get words that appear more than once
+    const repeatedWords = Object.entries(wordFrequency)
+      .filter(([_, count]) => count > 1)
+      .map(([word, count]) => ({
+        text: word,
+        count: count,
+        type: 'word'
+      }));
+
+    // Find repeated phrases (2-3 words)
+    const phrases = [];
+    for (let i = 0; i < words.length - 1; i++) {
+      phrases.push(words.slice(i, i + 2).join(' '));
+      if (i < words.length - 2) {
+        phrases.push(words.slice(i, i + 3).join(' '));
+      }
+    }
+
+    const phraseFrequency: { [key: string]: number } = {};
+    phrases.forEach(phrase => {
+      phraseFrequency[phrase] = (phraseFrequency[phrase] || 0) + 1;
+    });
+
+    const repeatedPhrases = Object.entries(phraseFrequency)
+      .filter(([_, count]) => count > 1)
+      .map(([phrase, count]) => ({
+        text: phrase,
+        count: count,
+        type: 'phrase'
+      }));
+
+    return [...repeatedWords, ...repeatedPhrases];
   },
 
   generateInterpretation(themes: string[], symbols: SymbolAnalysis[], emotions: Set<string>, actions: any[]): string {
