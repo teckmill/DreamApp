@@ -5,6 +5,7 @@ import { SUBSCRIPTION_TIERS, subscriptionService } from '../services/subscriptio
 import { paymentService } from '../services/paymentService';
 import { adService } from '../services/adService';
 import { rewardService } from '../services/rewardService';
+import AdUnit from '../components/AdUnit';
 
 const AD_DURATIONS = {
   short: { seconds: 15, multiplier: 1 },
@@ -26,6 +27,7 @@ export default function Subscription() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isWatchingAd, setIsWatchingAd] = useState(false);
   const [adCooldown, setAdCooldown] = useState(!adService.canWatchAd(user.id));
+  const [showVideoAd, setShowVideoAd] = useState(false);
 
   const handleUpgrade = async (tierKey: string, tier: any) => {
     setProcessing(true);
@@ -59,11 +61,14 @@ export default function Subscription() {
     }
 
     setIsWatchingAd(true);
+    setShowVideoAd(true);
+  };
+
+  const handleVideoComplete = async () => {
     try {
-      const reward = await adService.watchAd(duration);
+      const reward = await adService.watchAd('long'); // Always give best reward for video completion
       adService.recordAdView(user.id, reward);
       
-      // Apply reward
       if (reward.type === 'premium_time') {
         await paymentService.updateSubscription(user.id, 'premium');
         setSuccess(`Earned ${reward.amount} hours of premium access!`);
@@ -72,9 +77,10 @@ export default function Subscription() {
       setAdCooldown(true);
       setTimeout(() => setAdCooldown(false), 3600000); // 1 hour cooldown
     } catch (error) {
-      setError('Failed to complete ad view. Please try again.');
+      setError('Failed to process reward. Please try again.');
     } finally {
       setIsWatchingAd(false);
+      setShowVideoAd(false);
     }
   };
 
@@ -236,7 +242,7 @@ export default function Subscription() {
                 ) : (
                   <>
                     <Play className="h-5 w-5" />
-                    <span>Watch</span>
+                    <span>Watch Video for Premium</span>
                   </>
                 )}
               </button>
@@ -246,6 +252,15 @@ export default function Subscription() {
       </div>
 
       <AdProgress />
+
+      {/* Video Ad Modal */}
+      {showVideoAd && (
+        <AdUnit
+          slot="video-reward"
+          isVideo={true}
+          onComplete={handleVideoComplete}
+        />
+      )}
     </div>
   );
 }
