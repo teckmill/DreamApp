@@ -119,23 +119,18 @@ const CONTEXT_PATTERNS = {
 
 export const dreamAnalyzer = {
   analyzeDream(text: string): DreamAnalysis {
-    const doc = nlp(text);
     const textLower = text.toLowerCase();
-
-    // Extract subjects and actions
-    const subjects = doc.nouns().out('array');
-    const actions = doc.verbs().out('array');
-    const adjectives = doc.adjectives().out('array');
-
+    const words = textLower.split(/\W+/);
+    
     // Analyze emotions with more context
     const emotions = new Set<string>();
     let sentimentScore = 0;
     let emotionCounts = 0;
 
-    // Enhanced emotion detection using NLP
-    adjectives.forEach(adj => {
-      Object.entries(EMOTIONS).forEach(([emotion, keywords]) => {
-        if (keywords.includes(adj.toLowerCase())) {
+    // Enhanced emotion detection
+    Object.entries(EMOTIONS).forEach(([emotion, keywords]) => {
+      keywords.forEach(keyword => {
+        if (textLower.includes(keyword)) {
           emotions.add(emotion);
           sentimentScore += (emotion === 'joy' || emotion === 'love') ? 1 : 
                            (emotion === 'fear' || emotion === 'anger' || emotion === 'sadness') ? -1 : 0;
@@ -143,6 +138,13 @@ export const dreamAnalyzer = {
         }
       });
     });
+
+    // Normalize sentiment score
+    const normalizedScore = emotionCounts > 0 ? sentimentScore / emotionCounts : 0;
+
+    // Get sentiment label with emotions
+    const sentimentLabel = normalizedScore > 0.2 ? 'positive' : 
+                          normalizedScore < -0.2 ? 'negative' : 'neutral';
 
     // Detect themes with better context
     const themes = this.detectThemes(subjects, actions, adjectives);
@@ -158,8 +160,8 @@ export const dreamAnalyzer = {
 
     return {
       sentiment: {
-        score: sentimentScore / (emotionCounts || 1),
-        label: sentimentScore > 0.2 ? 'positive' : sentimentScore < -0.2 ? 'negative' : 'neutral',
+        score: normalizedScore,
+        label: sentimentLabel,
         emotions: Array.from(emotions)
       },
       themes,
