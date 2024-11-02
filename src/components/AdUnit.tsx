@@ -44,10 +44,11 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      setShowAd(false);
+      setTimeout(() => {
+        setShowAd(false);
+      }, 1000);
     } catch (error) {
       console.error('Error completing ad:', error);
-      // Keep the ad visible if there's an error
       setIsCompleted(false);
       setVideoProgress(0);
     }
@@ -87,7 +88,7 @@ export default function AdUnit({
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Watch Video for Premium Access
+              {isCompleted ? 'Video Complete!' : 'Watch Video for Premium Access'}
             </h3>
             {!isPlaying && !isCompleted && (
               <button 
@@ -103,6 +104,8 @@ export default function AdUnit({
             <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
               {isPlaying ? (
                 <Loader className="h-12 w-12 text-gray-400 animate-spin" />
+              ) : isCompleted ? (
+                <div className="text-green-500 text-xl">✓</div>
               ) : (
                 <Play className="h-12 w-12 text-gray-400" />
               )}
@@ -116,7 +119,7 @@ export default function AdUnit({
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
                 {isPlaying ? 'Watching video...' : 
-                 isCompleted ? 'Complete!' : 
+                 isCompleted ? 'Processing reward...' : 
                  'Ready to watch'}
               </p>
             </div>
