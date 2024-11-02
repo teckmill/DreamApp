@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search } from 'lucide-react';
+import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search, TrendingUp, Award, BookOpen, ThumbsUp, Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
+import { subscriptionService } from '../services/subscriptionService';
 import AdUnit from '../components/AdUnit';
 
 interface DreamPost {
@@ -10,13 +11,16 @@ interface DreamPost {
   username: string;
   content: string;
   tags: string[];
-  likes: Set<string>; // Store user IDs who liked the post
+  likes: Set<string>;
   comments: Comment[];
   createdAt: Date;
+  category: string;
   analysis?: {
     themes: string[];
     sentiment: string;
   };
+  saves: Set<string>; // New: Track saves/bookmarks
+  reports: Set<string>; // New: Track reports
 }
 
 interface Comment {
@@ -25,17 +29,48 @@ interface Comment {
   username: string;
   content: string;
   createdAt: Date;
+  likes: Set<string>; // New: Comment likes
+}
+
+interface UserReputation {
+  userId: string;
+  score: number;
+  badges: string[];
+  level: number;
 }
 
 const POSTS_STORAGE_KEY = 'dreamscape_community_posts';
+const REPUTATION_STORAGE_KEY = 'dreamscape_user_reputation';
+
+const DREAM_CATEGORIES = [
+  'Lucid Dreams',
+  'Nightmares',
+  'Recurring Dreams',
+  'Prophetic Dreams',
+  'Adventure Dreams',
+  'Healing Dreams',
+  'Spiritual Dreams'
+];
 
 export default function Community() {
   const { user } = useAuth();
   const [newPost, setNewPost] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'recent' | 'popular' | 'mine'>('recent');
+  const [filter, setFilter] = useState<'recent' | 'popular' | 'mine' | 'saved'>('recent');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
+  const [trendingTags, setTrendingTags] = useState<{tag: string, count: number}[]>([]);
+  const [userReputation, setUserReputation] = useState<UserReputation>(() => {
+    const saved = localStorage.getItem(`${REPUTATION_STORAGE_KEY}_${user.id}`);
+    return saved ? JSON.parse(saved) : {
+      userId: user.id,
+      score: 0,
+      badges: [],
+      level: 1
+    };
+  });
+
   const [posts, setPosts] = useState<DreamPost[]>(() => {
     const savedPosts = localStorage.getItem(POSTS_STORAGE_KEY);
     if (savedPosts) {
@@ -72,10 +107,62 @@ export default function Community() {
     }
   }, [posts]);
 
-  const handlePostSubmit = () => {
+  // Calculate trending tags
+  useEffect(() => {
+    const tagCounts = posts.reduce((acc, post) => {
+      post.tags.forEach(tag => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+      return acc;
+    }, {} as Record<string, number>);
+
+    const sortedTags = Object.entries(tagCounts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    setTrendingTags(sortedTags);
+  }, [posts]);
+
+  // Update reputation when user interactions happen
+  const updateReputation = (action: 'post' | 'like' | 'comment' | 'received_like') => {
+    const points = {
+      post: 5,
+      like: 1,
+      comment: 2,
+      received_like: 3
+    };
+
+    const newScore = userReputation.score + points[action];
+    const newLevel = Math.floor(newScore / 100) + 1;
+    
+    // Check for new badges
+    const badges = [...userReputation.badges];
+    if (newScore >= 100 && !badges.includes('Active Contributor')) {
+      badges.push('Active Contributor');
+    }
+    if (newScore >= 500 && !badges.includes('Dream Expert')) {
+      badges.push('Dream Expert');
+    }
+
+    const updatedReputation = {
+      ...userReputation,
+      score: newScore,
+      level: newLevel,
+      badges
+    };
+
+    setUserReputation(updatedReputation);
+    localStorage.setItem(
+      `${REPUTATION_STORAGE_KEY}_${user.id}`, 
+      JSON.stringify(updatedReputation)
+    );
+  };
+
+  // Enhanced post submission
+  const handlePostSubmit = async () => {
     if (!newPost.trim()) return;
 
-    // Check post limit
     if (!subscriptionService.checkLimit(user.id, 'communityPosts')) {
       alert('You have reached your monthly post limit. Watch ads or upgrade to post more!');
       return;
@@ -92,21 +179,26 @@ export default function Community() {
         likes: new Set(),
         comments: [],
         createdAt: new Date(),
+        category: selectedCategory,
         analysis: {
           themes: analysis.themes,
           sentiment: analysis.sentiment.label
-        }
+        },
+        saves: new Set(),
+        reports: new Set()
       };
 
       setPosts(prevPosts => [newDreamPost, ...prevPosts]);
       setNewPost('');
       setSelectedTags([]);
       subscriptionService.incrementUsage(user.id, 'communityPosts');
+      updateReputation('post');
     } catch (error) {
       console.error('Error creating post:', error);
     }
   };
 
+  // Enhanced interaction handlers
   const toggleLike = (postId: string) => {
     setPosts(posts.map(post => {
       if (post.id === postId) {
@@ -115,6 +207,20 @@ export default function Community() {
           newLikes.delete(user.id);
         } else {
           newLikes.add(user.id);
+          updateReputation('like');
+          if (post.userId !== user.id) {
+            // Update reputation for post owner
+            const postOwnerRep = JSON.parse(
+              localStorage.getItem(`${REPUTATION_STORAGE_KEY}_${post.userId}`) || '{}'
+            );
+            if (postOwnerRep.userId) {
+              postOwnerRep.score += 3;
+              localStorage.setItem(
+                `${REPUTATION_STORAGE_KEY}_${post.userId}`,
+                JSON.stringify(postOwnerRep)
+              );
+            }
+          }
         }
         return { ...post, likes: newLikes };
       }
@@ -122,78 +228,177 @@ export default function Community() {
     }));
   };
 
-  const addComment = (postId: string, comment: string) => {
-    if (!comment.trim()) return;
-    
-    setPosts(posts.map(post => 
-      post.id === postId ? {
-        ...post,
-        comments: [...post.comments, {
-          id: Date.now().toString(),
-          userId: user.id,
-          username: user.username,
-          content: comment,
-          createdAt: new Date()
-        }]
-      } : post
-    ));
+  const toggleSave = (postId: string) => {
+    setPosts(posts.map(post => {
+      if (post.id === postId) {
+        const newSaves = new Set(post.saves);
+        newSaves.has(user.id) ? newSaves.delete(user.id) : newSaves.add(user.id);
+        return { ...post, saves: newSaves };
+      }
+      return post;
+    }));
   };
 
-  const handleShare = async (post: DreamPost) => {
-    try {
-      await navigator.share({
-        title: 'Dream Share',
-        text: `${post.username}'s dream: ${post.content}`,
-        url: window.location.href
-      });
-    } catch (error) {
-      console.log('Sharing failed', error);
+  const reportPost = (postId: string) => {
+    if (window.confirm('Are you sure you want to report this post?')) {
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          const newReports = new Set(post.reports);
+          newReports.add(user.id);
+          return { ...post, reports: newReports };
+        }
+        return post;
+      }));
     }
   };
 
+  // Enhanced filtering
   const filteredPosts = posts
     .filter(post => {
+      // Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         return (
           post.content.toLowerCase().includes(query) ||
           post.tags.some(tag => tag.toLowerCase().includes(query)) ||
-          post.username.toLowerCase().includes(query)
+          post.username.toLowerCase().includes(query) ||
+          post.category.toLowerCase().includes(query)
         );
       }
       return true;
     })
     .filter(post => {
-      if (filter === 'mine') {
-        return post.userId === user.id;
+      // Category filter
+      if (selectedCategory !== 'all') {
+        return post.category === selectedCategory;
       }
       return true;
     })
+    .filter(post => {
+      // View filter
+      switch (filter) {
+        case 'mine':
+          return post.userId === user.id;
+        case 'saved':
+          return post.saves.has(user.id);
+        default:
+          return true;
+      }
+    })
     .sort((a, b) => {
+      // Sort based on filter
       if (filter === 'popular') {
-        const likeDiff = b.likes.size - a.likes.size;
-        if (likeDiff !== 0) return likeDiff;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const aScore = a.likes.size * 2 + a.comments.length;
+        const bScore = b.likes.size * 2 + b.comments.length;
+        return bScore - aScore;
       }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  useEffect(() => {
-    console.log('Current filter:', filter);
-    console.log('Filtered posts:', filteredPosts);
-  }, [filter, filteredPosts]);
+  // Add missing commonTags array
+  const commonTags = [
+    'lucid',
+    'nightmare',
+    'flying',
+    'falling',
+    'chase',
+    'water',
+    'family'
+  ];
 
-  const commonTags = ['lucid', 'nightmare', 'flying', 'falling', 'chase', 'water', 'family'];
+  // Add missing handleShare function
+  const handleShare = async (post: DreamPost) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Dream Share',
+          text: post.content,
+          url: window.location.href
+        });
+      } else {
+        // Fallback for browsers that don't support Web Share API
+        navigator.clipboard.writeText(post.content);
+        alert('Dream copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  // Add missing addComment function
+  const addComment = (postId: string, content: string) => {
+    setPosts(posts.map(post => {
+      if (post.id === postId) {
+        const newComment = {
+          id: Date.now().toString(),
+          userId: user.id,
+          username: user.username,
+          content,
+          createdAt: new Date(),
+          likes: new Set()
+        };
+        return {
+          ...post,
+          comments: [...post.comments, newComment]
+        };
+      }
+      return post;
+    }));
+    updateReputation('comment');
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Header Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Dream Community</h1>
-        <p className="text-gray-600 dark:text-gray-300">Share and explore dreams with fellow dreamers</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Dream Community
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300">
+          Share and explore dreams with fellow dreamers
+        </p>
+      </div>
+
+      {/* User Stats */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="text-lg font-semibold">Level {userReputation.level}</div>
+            <div className="text-gray-600 dark:text-gray-300">
+              {userReputation.score} points
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            {userReputation.badges.map(badge => (
+              <span key={badge} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-sm">
+                {badge}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Trending Tags */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-8">
+        <h2 className="font-semibold mb-4 flex items-center">
+          <TrendingUp className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+          Trending Tags
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {trendingTags.map(({ tag, count }) => (
+            <button
+              key={tag}
+              onClick={() => setSearchQuery(tag)}
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+            >
+              #{tag} ({count})
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Post Creation */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
         <textarea
           value={newPost}
           onChange={(e) => setNewPost(e.target.value)}
@@ -201,50 +406,60 @@ export default function Community() {
           className="w-full h-32 p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent resize-none mb-4"
         />
         
-        <div className="flex flex-wrap gap-2 mb-4">
-          {commonTags.map(tag => (
-            <button
-              key={tag}
-              onClick={() => setSelectedTags(prev => 
-                prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-              )}
-              className={`px-3 py-1 rounded-full text-sm ${
-                selectedTags.includes(tag)
-                  ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              #{tag}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-4 mb-4">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+          >
+            <option value="all">Select Category</option>
+            {DREAM_CATEGORIES.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+
+          <div className="flex flex-wrap gap-2">
+            {commonTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTags(prev => 
+                  prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                )}
+                className={`px-3 py-1 rounded-full text-sm ${
+                  selectedTags.includes(tag)
+                    ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex justify-end">
-          <button
-            onClick={handlePostSubmit}
-            className="inline-flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Share Dream
-          </button>
-        </div>
+        <button
+          onClick={handlePostSubmit}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          Share Dream
+        </button>
       </div>
 
-      {/* Filters and Search */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <div className="flex-1 min-w-[200px]">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
+              placeholder="Search dreams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search dreams..."
-              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
             />
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             onClick={() => setFilter('recent')}
@@ -267,6 +482,16 @@ export default function Community() {
             Popular
           </button>
           <button
+            onClick={() => setFilter('saved')}
+            className={`px-4 py-2 rounded-lg ${
+              filter === 'saved'
+                ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                : 'bg-white dark:bg-gray-800'
+            }`}
+          >
+            Saved
+          </button>
+          <button
             onClick={() => setFilter('mine')}
             className={`px-4 py-2 rounded-lg ${
               filter === 'mine'
@@ -284,17 +509,28 @@ export default function Community() {
         {filteredPosts.map((post, index) => (
           <React.Fragment key={post.id}>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              {/* Post Header */}
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    {post.username}
-                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      {post.username}
+                    </h3>
+                    {post.userId === user.id && (
+                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs">
+                        You
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {new Date(post.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                {post.analysis && (
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm">
+                    {post.category}
+                  </span>
+                  {post.analysis && (
                     <span className={`px-3 py-1 rounded-full text-sm ${
                       post.analysis.sentiment === 'positive'
                         ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
@@ -304,14 +540,16 @@ export default function Community() {
                     }`}>
                       {post.analysis.sentiment}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
+              {/* Post Content */}
               <p className="text-gray-700 dark:text-gray-300 mb-4">
                 {post.content}
               </p>
 
+              {/* Tags */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {post.tags.map((tag) => (
                   <span
@@ -323,6 +561,7 @@ export default function Community() {
                 ))}
               </div>
 
+              {/* Dream Themes */}
               {post.analysis?.themes && (
                 <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -341,6 +580,7 @@ export default function Community() {
                 </div>
               )}
 
+              {/* Post Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex space-x-4">
                   <button
@@ -361,16 +601,38 @@ export default function Community() {
                     <MessageCircle className="h-5 w-5" />
                     <span>{post.comments.length}</span>
                   </button>
+                  <button
+                    onClick={() => toggleSave(post.id)}
+                    className={`flex items-center space-x-2 ${
+                      post.saves.has(user.id)
+                        ? 'text-yellow-500 hover:text-yellow-600'
+                        : 'text-gray-500 hover:text-yellow-500'
+                    }`}
+                  >
+                    <BookOpen className="h-5 w-5" />
+                    <span>{post.saves.size}</span>
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleShare(post)}
-                  className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
-                >
-                  <Share2 className="h-5 w-5" />
-                  <span>Share</span>
-                </button>
+                <div className="flex space-x-4">
+                  <button 
+                    onClick={() => handleShare(post)}
+                    className="flex items-center space-x-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  >
+                    <Share2 className="h-5 w-5" />
+                    <span>Share</span>
+                  </button>
+                  {post.userId !== user.id && (
+                    <button
+                      onClick={() => reportPost(post.id)}
+                      className="flex items-center space-x-2 text-gray-500 hover:text-red-500"
+                    >
+                      <Flag className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Comments Section */}
               {showComments[post.id] && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="space-y-4">
@@ -422,10 +684,11 @@ export default function Community() {
               )}
             </div>
             
+            {/* Ad placement */}
             {(index + 1) % 3 === 0 && (
               <div className="my-8">
                 <AdUnit 
-                  slot="1234567890" // Replace with your actual ad slot ID
+                  slot="1234567890"
                   format="auto"
                   layout="in-article"
                   className="w-full min-h-[250px]"
