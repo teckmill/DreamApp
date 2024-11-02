@@ -18,7 +18,7 @@ export default function AdUnit({
   onComplete,
   isVideo = false 
 }: AdUnitProps) {
-  const [showAd, setShowAd] = useState(!isVideo);
+  const [showAd, setShowAd] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
@@ -45,11 +45,12 @@ export default function AdUnit({
     setIsPlaying(true);
     const interval = setInterval(() => {
       setVideoProgress(prev => {
-        if (prev >= 100) {
+        const newProgress = prev + 2;
+        if (newProgress >= 100) {
           handleVideoComplete();
           return 100;
         }
-        return prev + 2; // Increment by 2 every 100ms for a 5-second video
+        return newProgress;
       });
     }, 100);
     setIntervalId(interval);
@@ -62,6 +63,10 @@ export default function AdUnit({
     setShowAd(false);
   };
 
+  if (!showAd) {
+    return null;
+  }
+
   if (isVideo) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -70,12 +75,14 @@ export default function AdUnit({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Watch Video for Premium Access
             </h3>
-            <button 
-              onClick={handleClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {!isPlaying && (
+              <button 
+                onClick={handleClose}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </div>
           
           <div className="relative">
