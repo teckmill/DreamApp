@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, LineChart, Calendar, Award, BookOpen, MessageCircle, Heart, Edit, Save, X, Crown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { subscriptionService } from '../services/subscriptionService';
@@ -11,28 +11,87 @@ export default function Profile() {
   const [editedBio, setEditedBio] = useState(user?.bio || '');
   const currentTier = subscriptionService.getUserSubscription(user.id);
   const userRewards = rewardService.getUserRewards(user.id);
-
-  // Mock data - in a real app, this would come from your backend
-  const stats = {
+  const [stats, setStats] = useState({
     dreamsRecorded: 0,
     communityPosts: 0,
     likesReceived: 0,
     streak: 0,
-    joinedDate: new Date().toLocaleDateString(),
+    joinedDate: '',
     lastActive: 'Today'
-  };
+  });
+
+  // Load user stats
+  useEffect(() => {
+    // Get dreams count
+    const dreams = JSON.parse(localStorage.getItem(`dreams_${user.id}`) || '[]');
+    
+    // Get community posts and likes
+    const communityPosts = JSON.parse(localStorage.getItem('dreamscape_community_posts') || '[]');
+    const userPosts = communityPosts.filter((post: any) => post.userId === user.id);
+    const totalLikes = userPosts.reduce((sum: number, post: any) => 
+      sum + (Array.isArray(post.likes) ? post.likes.length : post.likes.size || 0), 0);
+
+    // Get user creation date
+    const users = JSON.parse(localStorage.getItem('dreamscape_users') || '[]');
+    const userInfo = users.find((u: any) => u.id === user.id);
+    const joinDate = userInfo?.createdAt || new Date().toLocaleDateString();
+
+    // Calculate streak
+    const sortedDreams = dreams.sort((a: any, b: any) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime());
+    let streak = 0;
+    if (sortedDreams.length > 0) {
+      const today = new Date().setHours(0, 0, 0, 0);
+      let currentDate = new Date(sortedDreams[0].date).setHours(0, 0, 0, 0);
+      while (currentDate >= today - streak * 24 * 60 * 60 * 1000) {
+        if (sortedDreams.some((dream: any) => 
+          new Date(dream.date).setHours(0, 0, 0, 0) === currentDate)) {
+          streak++;
+        } else {
+          break;
+        }
+        currentDate -= 24 * 60 * 60 * 1000;
+      }
+    }
+
+    setStats({
+      dreamsRecorded: dreams.length,
+      communityPosts: userPosts.length,
+      likesReceived: totalLikes,
+      streak,
+      joinedDate: joinDate,
+      lastActive: 'Today'
+    });
+  }, [user.id]);
+
+  // Calculate achievements
+  const achievements = [
+    { 
+      name: 'Dream Logger', 
+      description: 'Record your first dream', 
+      completed: stats.dreamsRecorded > 0 
+    },
+    { 
+      name: 'Dream Explorer', 
+      description: 'Record 10 dreams', 
+      completed: stats.dreamsRecorded >= 10 
+    },
+    { 
+      name: 'Community Member', 
+      description: 'Make your first post', 
+      completed: stats.communityPosts > 0 
+    },
+    { 
+      name: 'Dream Analyst', 
+      description: 'Analyze 5 dreams', 
+      completed: stats.dreamsRecorded >= 5 
+    }
+  ];
 
   const handleSaveProfile = () => {
     // In a real app, you'd update the user profile in your backend
     setIsEditing(false);
   };
-
-  const achievements = [
-    { name: 'Dream Logger', description: 'Record your first dream', completed: false },
-    { name: 'Dream Explorer', description: 'Record 10 dreams', completed: false },
-    { name: 'Community Member', description: 'Make your first post', completed: false },
-    { name: 'Dream Analyst', description: 'Analyze 5 dreams', completed: false },
-  ];
 
   return (
     <div className="max-w-4xl mx-auto">
