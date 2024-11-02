@@ -10,6 +10,9 @@ export default function Navbar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = React.useState(false);
 
+  // Check if user is admin
+  const isAdmin = user?.email === 'teckmillion17@gmail.com';
+
   const navItems = [
     { path: '/', label: 'Home', icon: null },
     ...(isAuthenticated
@@ -17,7 +20,7 @@ export default function Navbar() {
           { path: '/journal', label: 'Journal', icon: BookMarked },
           { path: '/community', label: 'Community', icon: Users },
           { path: '/profile', label: 'Profile', icon: User },
-          ...(user?.email === 'teckmillion17' ? [
+          ...(isAdmin ? [
             { path: '/admin', label: 'Admin', icon: Settings }
           ] : [])
         ]
