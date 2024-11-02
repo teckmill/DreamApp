@@ -20,7 +20,7 @@ interface SystemStats {
 }
 
 export default function AdminPanel() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'reports'>('overview');
   const [userStats, setUserStats] = useState<UserStats>({
     totalUsers: 0,
@@ -87,7 +87,7 @@ export default function AdminPanel() {
     }
   };
 
-  if (user.email !== 'teckmillion17') {
+  if (!isAdmin) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">

@@ -7,6 +7,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
 
@@ -15,11 +16,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState(authService.getCurrentUser());
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Check authentication status on mount
-    setUser(authService.getCurrentUser());
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
     setIsAuthenticated(authService.isAuthenticated());
+    // Check if user is admin
+    setIsAdmin(currentUser?.email === 'teckmillion17@gmail.com');
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -27,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const user = authService.login({ email, password });
       setUser(user);
       setIsAuthenticated(true);
+      setIsAdmin(user.email === 'teckmillion17@gmail.com');
     } catch (error) {
       throw error;
     }
@@ -68,7 +74,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated, updateProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register, 
+      logout, 
+      isAuthenticated, 
+      isAdmin, 
+      updateProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
