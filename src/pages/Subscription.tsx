@@ -33,33 +33,33 @@ export default function Subscription() {
   const handleVideoComplete = async () => {
     try {
       // Record the ad view first
-      const reward = await adService.watchAd('long');
-      adService.recordAdView(user.id, reward);
+      const adReward = await adService.watchAd('long');
+      adService.recordAdView(user.id, adReward);
       
-      // Add the rewards
-      await rewardService.addReward(user.id, {
-        type: 'premium_time',
-        amount: 24,
-        source: 'ad'
-      });
-
-      await rewardService.addReward(user.id, {
-        type: 'dream_tokens',
-        amount: 100,
-        source: 'ad'
-      });
-
-      await rewardService.addReward(user.id, {
-        type: 'analysis_credits',
-        amount: 5,
-        source: 'ad'
-      });
+      // Add the rewards immediately after recording the ad view
+      await Promise.all([
+        rewardService.addReward(user.id, {
+          type: 'premium_time',
+          amount: 24,
+          source: 'ad'
+        }),
+        rewardService.addReward(user.id, {
+          type: 'dream_tokens',
+          amount: 100,
+          source: 'ad'
+        }),
+        rewardService.addReward(user.id, {
+          type: 'analysis_credits',
+          amount: 5,
+          source: 'ad'
+        })
+      ]);
       
       // Refresh ad history
-      setAdHistory(adService.getAdHistory(user.id));
+      const newAdHistory = adService.getAdHistory(user.id);
+      setAdHistory(newAdHistory);
       
       // Check if user has unlocked a new tier
-      const newAdHistory = adService.getAdHistory(user.id);
       if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.pro.adRequirement) {
         await subscriptionService.upgradeTier(user.id, 'pro');
       } else if (newAdHistory.totalAdsWatched >= SUBSCRIPTION_TIERS.premium.adRequirement) {
@@ -67,10 +67,15 @@ export default function Subscription() {
       }
       
       setSuccess('Earned premium rewards! Check your profile for details.');
+      
+      // Force a small delay to show completion state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsWatchingAd(false);
+      setShowVideoAd(false);
     } catch (error) {
       setError('Failed to process reward. Please try again.');
       console.error('Error processing reward:', error);
-    } finally {
       setIsWatchingAd(false);
       setShowVideoAd(false);
     }
