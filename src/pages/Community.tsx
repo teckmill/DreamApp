@@ -3,6 +3,7 @@ import { MessageCircle, Heart, Share2, Filter, Sparkles, Send, Tag, Search, Tren
 import { useAuth } from '../context/AuthContext';
 import { dreamAnalyzer } from '../services/dreamAnalyzer';
 import { subscriptionService } from '../services/subscriptionService';
+import { rewardService } from '../services/rewardService';
 import AdUnit from '../components/AdUnit';
 
 interface DreamPost {
