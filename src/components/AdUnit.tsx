@@ -46,10 +46,8 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      // Add a small delay before closing
-      setTimeout(() => {
-        setShowAd(false);
-      }, 500);
+      // Close immediately after reward is processed
+      setShowAd(false);
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
