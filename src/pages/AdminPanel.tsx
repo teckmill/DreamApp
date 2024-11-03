@@ -31,7 +31,7 @@ interface ReportedContent {
 }
 
 export default function AdminPanel() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'reports' | 'settings' | 'content' | 'rewards'>('overview');
   const [userStats, setUserStats] = useState<UserStats>({
     totalUsers: 0,

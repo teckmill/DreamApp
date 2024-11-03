@@ -74,4 +74,4 @@ DreamScape is a modern web application that helps users record, analyze, and sha
 
 ## 🚀 Getting Started
 
-### Prerequisites 
+### Prerequisites
