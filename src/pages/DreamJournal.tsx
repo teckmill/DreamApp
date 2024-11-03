@@ -49,7 +49,7 @@ export default function DreamJournal() {
     localStorage.setItem(`dreams_${user.id}`, JSON.stringify(dreams));
   }, [dreams, user.id]);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!dreamText.trim()) return;
 
     // Check if user has analysis credits or premium time
@@ -59,9 +59,12 @@ export default function DreamJournal() {
     }
 
     try {
-      const result = dreamAnalyzer.analyzeDream(dreamText);
-      setAnalysis(result);
+      // Add loading state
       setShowAnalysis(true);
+      
+      // Wait for analysis result
+      const result = await dreamAnalyzer.analyzeDream(dreamText);
+      setAnalysis(result);
       
       // Use an analysis credit (premium users don't use credits)
       if (!userRewards.premiumTimeLeft) {
@@ -76,6 +79,7 @@ export default function DreamJournal() {
     } catch (error) {
       console.error('Analysis error:', error);
       alert('Failed to analyze dream. Please try again.');
+      setShowAnalysis(false);
     }
   };
 
