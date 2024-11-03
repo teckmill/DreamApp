@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, MessageCircle, Users, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { moderationService } from '../services/moderationService';
 import Categories from './Community/Categories';
 import Interpretations from './Community/Interpretations';
 import Polls from './Community/Polls';
@@ -12,30 +13,81 @@ import Guidelines from './Community/Guidelines';
 export default function Community() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('categories');
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  const handleModAction = async (contentId: string, contentType: string, action: string) => {
+    try {
+      switch (action) {
+        case 'pin':
+          await moderationService.pinContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content pinned successfully' });
+          break;
+        case 'unpin':
+          await moderationService.unpinContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content unpinned successfully' });
+          break;
+        case 'lock':
+          await moderationService.lockContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content locked successfully' });
+          break;
+        case 'unlock':
+          await moderationService.unlockContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content unlocked successfully' });
+          break;
+        case 'delete':
+          if (window.confirm('Are you sure you want to delete this content?')) {
+            await moderationService.deleteContent(contentId, contentType as any, user.id);
+            setMessage({ type: 'success', text: 'Content deleted successfully' });
+          }
+          break;
+        default:
+          throw new Error('Invalid action');
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    }
+
+    // Clear message after 3 seconds
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
 
   const renderContent = () => {
+    const props = {
+      onModAction: handleModAction,
+      isModerator: moderationService.canModerateContent(user.id)
+    };
+
     switch (activeTab) {
       case 'categories':
-        return <Categories />;
+        return <Categories {...props} />;
       case 'interpretations':
-        return <Interpretations />;
+        return <Interpretations {...props} />;
       case 'polls':
-        return <Polls />;
+        return <Polls {...props} />;
       case 'mentorship':
-        return <Mentorship />;
+        return <Mentorship {...props} />;
       case 'events':
-        return <Events />;
+        return <Events {...props} />;
       case 'groups':
-        return <Groups />;
+        return <Groups {...props} />;
       case 'guidelines':
         return <Guidelines />;
       default:
-        return <Categories />;
+        return <Categories {...props} />;
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Status Messages */}
+      {message.text && (
+        <div className={`p-4 rounded-lg ${
+          message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
       {/* Header with Stats */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <div className="flex justify-between items-center mb-6">
