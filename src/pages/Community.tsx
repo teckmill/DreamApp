@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
 import Categories from './Community/Categories';
 import Interpretations from './Community/Interpretations';
 import Polls from './Community/Polls';
