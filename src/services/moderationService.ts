@@ -1,6 +1,7 @@
 export type ContentType = 'dream' | 'comment' | 'interpretation' | 'poll';
 export type ReportReason = 'inappropriate' | 'spam' | 'harassment' | 'misinformation' | 'other';
 export type ModAction = 'warn' | 'mute' | 'ban' | 'delete';
+export type ModeratorRole = 'admin' | 'moderator' | 'community_manager';
 
 interface Report {
   id: string;
@@ -25,6 +26,19 @@ interface ModLog {
   moderatorId: string;
   createdAt: Date;
   expiresAt?: Date;
+}
+
+interface Moderator {
+  userId: string;
+  role: ModeratorRole;
+  assignedBy: string;
+  assignedAt: Date;
+  permissions: {
+    canBanUsers: boolean;
+    canDeleteContent: boolean;
+    canAssignMods: boolean;
+    canManageReports: boolean;
+  };
 }
 
 export const moderationService = {
@@ -112,5 +126,71 @@ export const moderationService = {
       .filter(log => log.action === 'mute' && log.userId === userId)
       .find(log => !log.expiresAt || new Date(log.expiresAt) > new Date());
     return !!activeMute;
+  },
+
+  assignModerator(
+    userId: string,
+    role: ModeratorRole,
+    assignedBy: string
+  ): Moderator {
+    if (!this.canAssignModerators(assignedBy)) {
+      throw new Error('No permission to assign moderators');
+    }
+
+    const moderator: Moderator = {
+      userId,
+      role,
+      assignedBy,
+      assignedAt: new Date(),
+      permissions: {
+        canBanUsers: role === 'admin',
+        canDeleteContent: true,
+        canAssignMods: role === 'admin',
+        canManageReports: true
+      }
+    };
+
+    const moderators = this.getModerators();
+    moderators.push(moderator);
+    localStorage.setItem('moderators', JSON.stringify(moderators));
+
+    return moderator;
+  },
+
+  removeModerator(userId: string, removedBy: string): void {
+    if (!this.canAssignModerators(removedBy)) {
+      throw new Error('No permission to remove moderators');
+    }
+
+    const moderators = this.getModerators().filter(mod => mod.userId !== userId);
+    localStorage.setItem('moderators', JSON.stringify(moderators));
+  },
+
+  getModerators(): Moderator[] {
+    return JSON.parse(localStorage.getItem('moderators') || '[]');
+  },
+
+  isModerator(userId: string): boolean {
+    return this.getModerators().some(mod => mod.userId === userId);
+  },
+
+  getModeratorRole(userId: string): ModeratorRole | null {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return moderator?.role || null;
+  },
+
+  canAssignModerators(userId: string): boolean {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return moderator?.permissions.canAssignMods || false;
+  },
+
+  canBanUsers(userId: string): boolean {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return moderator?.permissions.canBanUsers || false;
+  },
+
+  canManageReports(userId: string): boolean {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return moderator?.permissions.canManageReports || false;
   }
 }; 
