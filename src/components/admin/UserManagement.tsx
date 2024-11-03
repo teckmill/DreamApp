@@ -3,16 +3,26 @@ import { Search, Filter, Shield, Ban, Trash2, Edit, Eye, Gift } from 'lucide-rea
 import { useAuth } from '../../context/AuthContext';
 import { moderationService } from '../../services/moderationService';
 import { rewardService } from '../../services/rewardService';
+import { systemService } from '../../services/systemService';
 import styles from '../../styles/UserManagement.module.css';
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  lastActive?: Date;
+}
 
 export default function UserManagement() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -21,6 +31,54 @@ export default function UserManagement() {
   const loadUsers = () => {
     const allUsers = JSON.parse(localStorage.getItem('dreamscape_users') || '[]');
     setUsers(allUsers);
+  };
+
+  const showMessage = (message: string, isError = false) => {
+    if (isError) {
+      setError(message);
+      setTimeout(() => setError(''), 3000);
+    } else {
+      setSuccess(message);
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  };
+
+  const handleUserAction = async (userId: string, action: string) => {
+    try {
+      switch(action) {
+        case 'ban':
+          await moderationService.banUser(userId);
+          showMessage(`User ${userId} has been banned`);
+          break;
+        case 'unban':
+          await moderationService.unbanUser(userId);
+          showMessage(`User ${userId} has been unbanned`);
+          break;
+        case 'promote':
+          await moderationService.assignModerator(userId, 'moderator', user.id);
+          showMessage(`User ${userId} has been promoted to moderator`);
+          break;
+        case 'grant_premium':
+          await rewardService.addReward(userId, {
+            type: 'premium_time',
+            amount: 720, // 30 days
+            source: 'admin'
+          });
+          showMessage(`Premium access granted to user ${userId}`);
+          break;
+        case 'delete':
+          if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+            await systemService.deleteUser(userId);
+            showMessage(`User ${userId} has been deleted`);
+            loadUsers(); // Refresh user list
+          }
+          break;
+        default:
+          throw new Error('Invalid action');
+      }
+    } catch (error: any) {
+      showMessage(error.message || 'Action failed', true);
+    }
   };
 
   const filteredUsers = users.filter(user => {
@@ -48,30 +106,20 @@ export default function UserManagement() {
     return true;
   });
 
-  const handleUserAction = async (userId: string, action: string) => {
-    switch(action) {
-      case 'ban':
-        await moderationService.banUser(userId);
-        break;
-      case 'unban':
-        await moderationService.unbanUser(userId);
-        break;
-      case 'promote':
-        await moderationService.assignModerator(userId, 'moderator', user.id);
-        break;
-      case 'grant_premium':
-        await rewardService.addReward(userId, {
-          type: 'premium_time',
-          amount: 720, // 30 days
-          source: 'admin' as const
-        });
-        break;
-      // Add more actions
-    }
-  };
-
   return (
     <div className="space-y-6">
+      {/* Messages */}
+      {success && (
+        <div className="p-4 bg-green-100 text-green-700 rounded-lg">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Search and Filters */}
       <div className="flex flex-wrap gap-4">
         <div className="flex-1">
@@ -178,7 +226,6 @@ export default function UserManagement() {
                         title="Unban User"
                       >
                         <Ban className="h-5 w-5" />
-                        <span className="sr-only">Unban User</span>
                       </button>
                     ) : (
                       <button
@@ -187,7 +234,6 @@ export default function UserManagement() {
                         title="Ban User"
                       >
                         <Ban className="h-5 w-5" />
-                        <span className="sr-only">Ban User</span>
                       </button>
                     )}
                     
@@ -197,7 +243,6 @@ export default function UserManagement() {
                       title="Promote to Moderator"
                     >
                       <Shield className="h-5 w-5" />
-                      <span className="sr-only">Promote to Moderator</span>
                     </button>
 
                     <button
@@ -206,16 +251,17 @@ export default function UserManagement() {
                       title="Grant Premium Access"
                     >
                       <Gift className="h-5 w-5" />
-                      <span className="sr-only">Grant Premium Access</span>
                     </button>
 
                     <button
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setShowUserModal(true);
+                      }}
                       className={`text-gray-600 hover:text-gray-900 ${styles.tooltip}`}
                       title="View User Details"
                     >
                       <Eye className="h-5 w-5" />
-                      <span className="sr-only">View User Details</span>
                     </button>
 
                     <button
@@ -224,7 +270,6 @@ export default function UserManagement() {
                       title="Delete User"
                     >
                       <Trash2 className="h-5 w-5" />
-                      <span className="sr-only">Delete User</span>
                     </button>
                   </div>
                 </td>
@@ -238,7 +283,33 @@ export default function UserManagement() {
       {showUserModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4">
-            {/* User details content */}
+            <h3 className="text-xl font-semibold mb-4">User Details</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="font-medium">Username</label>
+                <p>{selectedUser.username}</p>
+              </div>
+              <div>
+                <label className="font-medium">Email</label>
+                <p>{selectedUser.email}</p>
+              </div>
+              <div>
+                <label className="font-medium">Status</label>
+                <p>{moderationService.isUserBanned(selectedUser.id) ? 'Banned' : 'Active'}</p>
+              </div>
+              <div>
+                <label className="font-medium">Role</label>
+                <p>{moderationService.getModeratorRole(selectedUser.id) || 'Basic User'}</p>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowUserModal(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
