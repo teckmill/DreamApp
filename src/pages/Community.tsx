@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, MessageCircle, Users, Star } from 'lucide-react';
+import { Bell, MessageCircle, Users, Star, Compass, TrendingUp, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { moderationService } from '../services/moderationService';
 import Categories from './Community/Categories';
@@ -12,68 +12,121 @@ import Guidelines from './Community/Guidelines';
 
 export default function Community() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('categories');
+  const [activeTab, setActiveTab] = useState('discover');
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  const handleModAction = async (contentId: string, contentType: string, action: string) => {
-    try {
-      switch (action) {
-        case 'pin':
-          await moderationService.pinContent(contentId, contentType as any, user.id);
-          setMessage({ type: 'success', text: 'Content pinned successfully' });
-          break;
-        case 'unpin':
-          await moderationService.unpinContent(contentId, contentType as any, user.id);
-          setMessage({ type: 'success', text: 'Content unpinned successfully' });
-          break;
-        case 'lock':
-          await moderationService.lockContent(contentId, contentType as any, user.id);
-          setMessage({ type: 'success', text: 'Content locked successfully' });
-          break;
-        case 'unlock':
-          await moderationService.unlockContent(contentId, contentType as any, user.id);
-          setMessage({ type: 'success', text: 'Content unlocked successfully' });
-          break;
-        case 'delete':
-          if (window.confirm('Are you sure you want to delete this content?')) {
-            await moderationService.deleteContent(contentId, contentType as any, user.id);
-            setMessage({ type: 'success', text: 'Content deleted successfully' });
-          }
-          break;
-        default:
-          throw new Error('Invalid action');
-      }
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
-    }
-
-    // Clear message after 3 seconds
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  // Featured content for the Discover section
+  const featuredContent = {
+    popularGroups: [
+      { id: '1', name: 'Lucid Dreamers', members: 234, activity: 'high' },
+      { id: '2', name: 'Dream Interpreters', members: 156, activity: 'medium' }
+    ],
+    trendingDiscussions: [
+      { id: '1', title: 'Common Flying Dreams', replies: 45, views: 230 },
+      { id: '2', title: 'Dream Signs Guide', replies: 32, views: 180 }
+    ],
+    upcomingEvents: [
+      { id: '1', title: 'Lucid Dream Workshop', date: '2024-02-15', participants: 28 },
+      { id: '2', title: 'Dream Journaling Tips', date: '2024-02-18', participants: 15 }
+    ]
   };
 
+  const mainTabs = [
+    { id: 'discover', label: 'Discover', icon: Compass },
+    { id: 'categories', label: 'Categories', icon: BookOpen },
+    { id: 'interpretations', label: 'Dream Analysis', icon: Star },
+    { id: 'groups', label: 'Dream Circles', icon: Users },
+    { id: 'events', label: 'Events', icon: Calendar },
+    { id: 'polls', label: 'Community Polls', icon: BarChart },
+    { id: 'mentorship', label: 'Mentorship', icon: Mentor }
+  ];
+
+  const renderDiscoverSection = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Popular Groups */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Popular Dream Circles</h3>
+          <TrendingUp className="h-5 w-5 text-indigo-500" />
+        </div>
+        <div className="space-y-4">
+          {featuredContent.popularGroups.map(group => (
+            <div key={group.id} className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{group.name}</p>
+                <p className="text-sm text-gray-500">{group.members} members</p>
+              </div>
+              <span className={`px-2 py-1 text-xs rounded-full ${
+                group.activity === 'high' 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {group.activity} activity
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Trending Discussions */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Trending Discussions</h3>
+          <MessageCircle className="h-5 w-5 text-indigo-500" />
+        </div>
+        <div className="space-y-4">
+          {featuredContent.trendingDiscussions.map(discussion => (
+            <div key={discussion.id} className="space-y-2">
+              <p className="font-medium">{discussion.title}</p>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <span>{discussion.replies} replies</span>
+                <span>{discussion.views} views</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upcoming Events */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Upcoming Events</h3>
+          <Calendar className="h-5 w-5 text-indigo-500" />
+        </div>
+        <div className="space-y-4">
+          {featuredContent.upcomingEvents.map(event => (
+            <div key={event.id} className="space-y-2">
+              <p className="font-medium">{event.title}</p>
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <span>{new Date(event.date).toLocaleDateString()}</span>
+                <span>{event.participants} attending</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
+    if (activeTab === 'discover') {
+      return renderDiscoverSection();
+    }
+
     const props = {
       onModAction: handleModAction,
       isModerator: moderationService.canModerateContent(user.id)
     };
 
     switch (activeTab) {
-      case 'categories':
-        return <Categories {...props} />;
-      case 'interpretations':
-        return <Interpretations {...props} />;
-      case 'polls':
-        return <Polls {...props} />;
-      case 'mentorship':
-        return <Mentorship {...props} />;
-      case 'events':
-        return <Events {...props} />;
-      case 'groups':
-        return <Groups {...props} />;
-      case 'guidelines':
-        return <Guidelines />;
-      default:
-        return <Categories {...props} />;
+      case 'categories': return <Categories {...props} />;
+      case 'interpretations': return <Interpretations {...props} />;
+      case 'polls': return <Polls {...props} />;
+      case 'mentorship': return <Mentorship {...props} />;
+      case 'events': return <Events {...props} />;
+      case 'groups': return <Groups {...props} />;
+      case 'guidelines': return <Guidelines />;
+      default: return null;
     }
   };
 
@@ -88,84 +141,60 @@ export default function Community() {
         </div>
       )}
 
-      {/* Header with Stats */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Dream Community</h1>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <Users className="h-5 w-5 text-indigo-600 mr-2" />
-              <span className="text-sm">2.5k Members</span>
-            </div>
-            <div className="flex items-center">
-              <MessageCircle className="h-5 w-5 text-green-600 mr-2" />
-              <span className="text-sm">150 Active</span>
-            </div>
+      {/* Community Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Your Dreams</span>
+            <Star className="h-5 w-5 text-yellow-500" />
           </div>
+          <p className="text-2xl font-bold mt-2">23</p>
         </div>
-
-        {/* User Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Your Dreams</span>
-              <Star className="h-5 w-5 text-yellow-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2">23</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Interpretations</span>
+            <MessageCircle className="h-5 w-5 text-indigo-500" />
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Interpretations</span>
-              <MessageCircle className="h-5 w-5 text-indigo-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2">12</p>
+          <p className="text-2xl font-bold mt-2">12</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Reputation</span>
+            <Star className="h-5 w-5 text-purple-500" />
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Reputation</span>
-              <Star className="h-5 w-5 text-purple-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2">450</p>
+          <p className="text-2xl font-bold mt-2">450</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Notifications</span>
+            <Bell className="h-5 w-5 text-red-500" />
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">Notifications</span>
-              <Bell className="h-5 w-5 text-red-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2">3</p>
-          </div>
+          <p className="text-2xl font-bold mt-2">3</p>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Main Navigation */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex overflow-x-auto">
-            {[
-              { id: 'categories', label: 'Categories' },
-              { id: 'interpretations', label: 'Interpretations' },
-              { id: 'polls', label: 'Polls' },
-              { id: 'mentorship', label: 'Mentorship' },
-              { id: 'events', label: 'Events' },
-              { id: 'groups', label: 'Groups' },
-              { id: 'guidelines', label: 'Guidelines' }
-            ].map(tab => (
+            {mainTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${
+                className={`flex items-center px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 ${
                   activeTab === tab.id
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
+                <tab.icon className="h-5 w-5 mr-2" />
                 {tab.label}
               </button>
             ))}
           </nav>
         </div>
 
-        {/* Tab Content */}
+        {/* Content Area */}
         <div className="p-6">
           {renderContent()}
         </div>
