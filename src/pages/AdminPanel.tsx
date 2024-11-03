@@ -1,135 +1,143 @@
-import React, { useState } from 'react';
-import { Shield, Users, Settings, AlertTriangle, Database, Flag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Users, Settings, Database, Flag, Activity, Lock, Gift, BellRing } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { moderationService } from '../services/moderationService';
-import ModeratorManagement from '../components/admin/ModeratorManagement';
+import { systemService, type SystemSettings, type SystemStats } from '../services/systemService';
+import { rewardService } from '../services/rewardService';
+import { subscriptionService } from '../services/subscriptionService';
+import UserManagement from '../components/admin/UserManagement';
 
 export default function AdminPanel() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'users' | 'mods' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [systemStats, setSystemStats] = useState<SystemStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalDreams: 0,
+    premiumUsers: 0,
+    totalRevenue: 0,
+    reportedContent: 0
+  });
 
-  const reports = moderationService.getReports();
-  const pendingReports = reports.filter(r => r.status === 'pending');
+  const [settings, setSettings] = useState<SystemSettings>({
+    maintenanceMode: false,
+    allowRegistration: true,
+    requireEmailVerification: true,
+    adCooldownPeriod: 30,
+    maxDreamsPerUser: 100
+  });
+
+  useEffect(() => {
+    if (!user || user.email !== 'teckmillion17@gmail.com') {
+      window.location.href = '/';
+      return;
+    }
+    loadSystemStats();
+    loadSettings();
+  }, [user]);
+
+  const loadSystemStats = () => {
+    // Load stats from various services
+    const stats = systemService.getSystemStats();
+    setSystemStats(stats);
+  };
+
+  const loadSettings = () => {
+    const currentSettings = systemService.getSettings();
+    setSettings(currentSettings);
+  };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: Database },
-    { id: 'reports', label: 'Reports', icon: Flag, count: pendingReports.length },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'mods', label: 'Moderators', icon: Shield },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'overview', label: 'Dashboard', icon: Database },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'content', label: 'Content Moderation', icon: Flag },
+    { id: 'subscriptions', label: 'Subscriptions', icon: Gift },
+    { id: 'security', label: 'Security', icon: Lock },
+    { id: 'notifications', label: 'Notifications', icon: BellRing },
+    { id: 'settings', label: 'System Settings', icon: Settings }
   ];
 
-  const handleReportAction = async (reportId: string, action: 'warn' | 'mute' | 'ban' | 'delete') => {
-    await moderationService.resolveReport(reportId, user.id, action);
+  const handleSettingChange = async (key: keyof SystemSettings, value: SystemSettings[keyof SystemSettings]) => {
+    try {
+      await systemService.updateSetting(key, value);
+      setSettings(prev => ({ ...prev, [key]: value }));
+      // Refresh stats if needed
+      loadSystemStats();
+    } catch (error) {
+      console.error('Failed to update setting:', error);
+    }
+  };
+
+  const handleUserAction = async (userId: string, action: string) => {
+    try {
+      switch (action) {
+        case 'ban':
+          await moderationService.banUser(userId);
+          break;
+        case 'unban':
+          await moderationService.unbanUser(userId);
+          break;
+        case 'promote':
+          await moderationService.assignModerator(userId, 'moderator', user.id);
+          break;
+        case 'delete':
+          await systemService.deleteUser(userId);
+          break;
+      }
+      loadSystemStats();
+    } catch (error) {
+      console.error('Failed to perform user action:', error);
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Admin Panel</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-500">Last updated: {new Date().toLocaleString()}</span>
+          <button
+            onClick={loadSystemStats}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200"
+          >
+            <Activity className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h3 className="text-sm font-medium text-gray-500 mb-1">Total Users</h3>
+          <p className="text-3xl font-bold">{systemStats.totalUsers}</p>
+          <p className="text-sm text-green-500 mt-2">
+            {systemStats.activeUsers} active today
+          </p>
+        </div>
+        {/* Add more stat cards */}
+      </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-4 mb-8">
+      <div className="flex space-x-1 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center px-4 py-2 rounded-lg ${
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
               activeTab === tab.id
-                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-700/50'
             }`}
           >
             <tab.icon className="h-5 w-5 mr-2" />
-            <span>{tab.label}</span>
-            {tab.count && tab.count > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs">
-                {tab.count}
-              </span>
-            )}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-              <h3 className="text-lg font-semibold mb-2">Pending Reports</h3>
-              <p className="text-3xl font-bold text-indigo-600">{pendingReports.length}</p>
-            </div>
-            {/* Add more stats */}
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <div className="space-y-4">
-            {reports.map(report => (
-              <div key={report.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div className="flex justify-between mb-2">
-                  <div>
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      report.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-600'
-                        : 'bg-green-100 text-green-600'
-                    }`}>
-                      {report.status}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {new Date(report.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <p className="mb-2">{report.description}</p>
-                {report.status === 'pending' && (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleReportAction(report.id, 'warn')}
-                      className="px-3 py-1 bg-yellow-100 text-yellow-600 rounded-lg"
-                    >
-                      Warn
-                    </button>
-                    <button
-                      onClick={() => handleReportAction(report.id, 'mute')}
-                      className="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg"
-                    >
-                      Mute
-                    </button>
-                    <button
-                      onClick={() => handleReportAction(report.id, 'ban')}
-                      className="px-3 py-1 bg-red-100 text-red-600 rounded-lg"
-                    >
-                      Ban
-                    </button>
-                    <button
-                      onClick={() => handleReportAction(report.id, 'delete')}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg"
-                    >
-                      Delete Content
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'mods' && <ModeratorManagement />}
-
-        {activeTab === 'settings' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div>
-                <h3 className="font-medium">Maintenance Mode</h3>
-                <p className="text-sm text-gray-500">Temporarily disable access for non-admin users</p>
-              </div>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg">
-                Enable
-              </button>
-            </div>
-            {/* Add more settings */}
-          </div>
-        )}
+        {/* Add tab content components */}
       </div>
     </div>
   );
