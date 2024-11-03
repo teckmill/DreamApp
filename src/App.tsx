@@ -81,8 +81,27 @@ function AppContent() {
           } />
         </Routes>
       </main>
-      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-gray-600 dark:text-gray-400">
-        <p>© 2024 DreamScape. All rights reserved.</p>
+      <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            © 2024 DreamScape. All rights reserved.
+          </p>
+          <div className="flex space-x-4 text-sm">
+            <a 
+              href="/terms" 
+              className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+            >
+              Terms of Service
+            </a>
+            <span className="text-gray-400">•</span>
+            <a 
+              href="/privacy" 
+              className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+            >
+              Privacy Policy
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );
