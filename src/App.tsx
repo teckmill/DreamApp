@@ -14,6 +14,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Subscription from './pages/Subscription';
 import AdminPanel from './pages/AdminPanel';
 import { systemService } from './services/systemService';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 function App() {
   return (
@@ -79,6 +81,8 @@ function AppContent() {
               <AdminPanel />
             </ProtectedRoute>
           } />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
         </Routes>
       </main>
       <footer className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
