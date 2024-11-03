@@ -57,11 +57,10 @@ export default function AdminPanel() {
     { id: 'settings', label: 'System Settings', icon: Settings }
   ];
 
-  const handleSettingChange = async (key: keyof SystemSettings, value: SystemSettings[keyof SystemSettings]) => {
+  const handleSettingChange = async (key: keyof SystemSettings, value: SystemSettings[typeof key]) => {
     try {
       await systemService.updateSetting(key, value);
-      setSettings(prev => ({ ...prev, [key]: value }));
-      // Refresh stats if needed
+      setSettings((prev: SystemSettings) => ({ ...prev, [key]: value }));
       loadSystemStats();
     } catch (error) {
       console.error('Failed to update setting:', error);
