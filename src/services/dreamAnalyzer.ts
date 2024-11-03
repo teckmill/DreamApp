@@ -191,7 +191,7 @@ export const dreamAnalyzer = {
             {
               role: 'system',
               content: `You are a dream analysis expert. Analyze the dream and provide:
-                1. Sentiment (positive/negative/neutral) and specific emotions detected
+                1. Sentiment (positive/negative/neutral) and list of specific emotions detected (joy, fear, anxiety, excitement, etc.)
                 2. Main themes (3-5 key themes)
                 3. A detailed interpretation (2-3 paragraphs)
                 4. Specific recommendations (at least 3 bullet points)
@@ -203,7 +203,9 @@ export const dreamAnalyzer = {
                   "themes": ["theme1", "theme2", ...],
                   "interpretation": "detailed interpretation...",
                   "recommendations": ["recommendation1", "recommendation2", ...]
-                }`
+                }
+                
+                Always include at least 2-3 emotions in the emotions array, even for neutral dreams.`
             },
             {
               role: 'user',
@@ -226,7 +228,8 @@ export const dreamAnalyzer = {
           score: analysis.sentiment === 'positive' ? 1 : 
                  analysis.sentiment === 'negative' ? -1 : 0,
           label: analysis.sentiment || 'neutral',
-          emotions: Array.isArray(analysis.emotions) ? analysis.emotions : []
+          emotions: Array.isArray(analysis.emotions) && analysis.emotions.length > 0 ? 
+            analysis.emotions : ['calm', 'contemplative'] // Default emotions if none provided
         },
         themes: Array.isArray(analysis.themes) ? analysis.themes : [],
         interpretation: analysis.interpretation || 'No interpretation available.',
@@ -243,26 +246,29 @@ export const dreamAnalyzer = {
   // Enhanced fallback analysis
   fallbackAnalysis(text: string): DreamAnalysis {
     const textLower = text.toLowerCase();
-    
-    // Basic sentiment analysis
-    const positiveWords = ['happy', 'joy', 'peaceful', 'love', 'exciting'];
-    const negativeWords = ['scary', 'fear', 'nightmare', 'anxiety', 'stress'];
-    
-    let sentimentScore = 0;
     const emotions = [];
+    let sentimentScore = 0;
 
-    positiveWords.forEach(word => {
+    // Check for positive emotions
+    EMOTIONS.joy.forEach(word => {
       if (textLower.includes(word)) {
         sentimentScore++;
         emotions.push(word);
       }
     });
-    negativeWords.forEach(word => {
+
+    // Check for negative emotions
+    EMOTIONS.fear.forEach(word => {
       if (textLower.includes(word)) {
         sentimentScore--;
         emotions.push(word);
       }
     });
+
+    // Always include at least one emotion
+    if (emotions.length === 0) {
+      emotions.push('contemplative');
+    }
 
     return {
       sentiment: {
