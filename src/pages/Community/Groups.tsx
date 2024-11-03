@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Users, Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Plus, X, Send, MessageCircle } from 'lucide-react';
 import { ModerationProps } from '../../types/moderation';
+import { useAuth } from '../../context/AuthContext';
 
 interface DreamGroup {
   id: string;
@@ -11,19 +12,42 @@ interface DreamGroup {
   createdBy: string;
   createdAt: Date;
   isPrivate: boolean;
+  messages: GroupMessage[];
+}
+
+interface GroupMessage {
+  id: string;
+  userId: string;
+  username: string;
+  content: string;
+  timestamp: Date;
 }
 
 interface GroupsProps extends ModerationProps {}
 
 export default function Groups({ onModAction, isModerator }: GroupsProps) {
+  const { user } = useAuth();
   const [groups, setGroups] = useState<DreamGroup[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<DreamGroup | null>(null);
+  const [newMessage, setNewMessage] = useState('');
   const [newGroup, setNewGroup] = useState({
     name: '',
     description: '',
     topics: [''],
     isPrivate: false
   });
+
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  const loadGroups = () => {
+    const savedGroups = localStorage.getItem('dream_groups');
+    if (savedGroups) {
+      setGroups(JSON.parse(savedGroups));
+    }
+  };
 
   const handleCreateGroup = () => {
     if (!newGroup.name || !newGroup.description) return;
@@ -32,14 +56,17 @@ export default function Groups({ onModAction, isModerator }: GroupsProps) {
       id: Date.now().toString(),
       name: newGroup.name,
       description: newGroup.description,
-      members: [],
+      members: [user.id], // Creator is first member
       topics: newGroup.topics.filter(topic => topic.trim() !== ''),
-      createdBy: 'currentUserId', // Replace with actual user ID
+      createdBy: user.id,
       createdAt: new Date(),
-      isPrivate: newGroup.isPrivate
+      isPrivate: newGroup.isPrivate,
+      messages: []
     };
 
-    setGroups([...groups, group]);
+    const updatedGroups = [...groups, group];
+    setGroups(updatedGroups);
+    localStorage.setItem('dream_groups', JSON.stringify(updatedGroups));
     setShowCreateGroup(false);
     setNewGroup({
       name: '',
@@ -49,8 +76,66 @@ export default function Groups({ onModAction, isModerator }: GroupsProps) {
     });
   };
 
+  const handleJoinGroup = (groupId: string) => {
+    const updatedGroups = groups.map(group => {
+      if (group.id === groupId && !group.members.includes(user.id)) {
+        return {
+          ...group,
+          members: [...group.members, user.id]
+        };
+      }
+      return group;
+    });
+    setGroups(updatedGroups);
+    localStorage.setItem('dream_groups', JSON.stringify(updatedGroups));
+  };
+
+  const handleLeaveGroup = (groupId: string) => {
+    const updatedGroups = groups.map(group => {
+      if (group.id === groupId) {
+        return {
+          ...group,
+          members: group.members.filter(memberId => memberId !== user.id)
+        };
+      }
+      return group;
+    });
+    setGroups(updatedGroups);
+    localStorage.setItem('dream_groups', JSON.stringify(updatedGroups));
+    if (selectedGroup?.id === groupId) {
+      setSelectedGroup(null);
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (!selectedGroup || !newMessage.trim()) return;
+
+    const message: GroupMessage = {
+      id: Date.now().toString(),
+      userId: user.id,
+      username: user.username,
+      content: newMessage,
+      timestamp: new Date()
+    };
+
+    const updatedGroups = groups.map(group => {
+      if (group.id === selectedGroup.id) {
+        return {
+          ...group,
+          messages: [...group.messages, message]
+        };
+      }
+      return group;
+    });
+
+    setGroups(updatedGroups);
+    localStorage.setItem('dream_groups', JSON.stringify(updatedGroups));
+    setNewMessage('');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Dream Circles</h2>
         <button
@@ -60,6 +145,141 @@ export default function Groups({ onModAction, isModerator }: GroupsProps) {
           <Plus className="h-4 w-4" />
           <span>Create Circle</span>
         </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Groups List */}
+        <div className="col-span-12 lg:col-span-4">
+          <div className="grid gap-4">
+            {groups.map(group => (
+              <div 
+                key={group.id} 
+                className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg cursor-pointer
+                  ${selectedGroup?.id === group.id ? 'ring-2 ring-indigo-500' : ''}`}
+                onClick={() => setSelectedGroup(group)}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-semibold">{group.name}</h3>
+                  {group.isPrivate && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                      Private
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">{group.description}</p>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {group.topics.map((topic, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+                
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{group.members.length} members</span>
+                  </div>
+                  {group.members.includes(user.id) ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLeaveGroup(group.id);
+                      }}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Leave
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleJoinGroup(group.id);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-700"
+                    >
+                      Join
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chat Area */}
+        <div className="col-span-12 lg:col-span-8">
+          {selectedGroup ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg h-[600px] flex flex-col">
+              {/* Chat Header */}
+              <div className="p-4 border-b dark:border-gray-700">
+                <h3 className="text-xl font-semibold">{selectedGroup.name}</h3>
+                <p className="text-sm text-gray-500">{selectedGroup.members.length} members</p>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {selectedGroup.messages.map(message => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[70%] rounded-lg p-3 ${
+                      message.userId === user.id
+                        ? 'bg-indigo-100 dark:bg-indigo-900/30'
+                        : 'bg-gray-100 dark:bg-gray-700/50'
+                    }`}>
+                      <div className="text-sm font-medium mb-1">{message.username}</div>
+                      <p className="text-gray-700 dark:text-gray-300">{message.content}</p>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Message Input */}
+              {selectedGroup.members.includes(user.id) && (
+                <div className="p-4 border-t dark:border-gray-700">
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type your message..."
+                      className="flex-1 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    >
+                      <Send className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg h-[600px] flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4" />
+                <p>Select a dream circle to view the conversation</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create Group Modal */}
@@ -166,38 +386,6 @@ export default function Groups({ onModAction, isModerator }: GroupsProps) {
           </div>
         </div>
       )}
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {groups.map(group => (
-          <div key={group.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold">{group.name}</h3>
-              {group.isPrivate && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                  Private
-                </span>
-              )}
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">{group.description}</p>
-            
-            <div className="flex flex-wrap gap-2 mb-4">
-              {group.topics.map((topic, index) => (
-                <span
-                  key={index}
-                  className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
-                >
-                  {topic}
-                </span>
-              ))}
-            </div>
-            
-            <div className="flex items-center text-sm text-gray-500">
-              <Users className="h-4 w-4 mr-1" />
-              <span>{group.members.length} members</span>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 } 
