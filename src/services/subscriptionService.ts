@@ -129,7 +129,7 @@ export const subscriptionService = {
     const subscription = {
       ...SUBSCRIPTION_TIERS[tier],
       startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      endDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     };
     
     localStorage.setItem(`subscription_${userId}`, JSON.stringify(subscription));
@@ -137,15 +137,14 @@ export const subscriptionService = {
     // Grant initial rewards based on tier
     const rewards = {
       premium: {
-        analysisCredits: 50,
-        dreamTokens: 1000,
-        premiumTime: 720 // 30 days in hours
+        analysisCredits: 5,
+        dreamTokens: 100,
+        premiumTime: 24 // 24 hours
       },
       pro: {
-        analysisCredits: 100,
-        dreamTokens: 2000,
-        premiumTime: 720,
-        themes: ['pro_theme_1', 'pro_theme_2']
+        analysisCredits: 10,
+        dreamTokens: 200,
+        premiumTime: 24
       }
     };
 
