@@ -1,7 +1,7 @@
 interface Reward {
   type: 'dream_tokens' | 'premium_time' | 'theme_unlock' | 'analysis_credits';
   amount: number;
-  source: 'ad' | 'daily' | 'streak' | 'achievement';
+  source: 'ad' | 'daily' | 'streak' | 'achievement' | 'admin';
 }
 
 interface UserRewards {
