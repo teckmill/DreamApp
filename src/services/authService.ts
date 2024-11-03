@@ -79,5 +79,11 @@ export const authService = {
   // Check if user is authenticated
   isAuthenticated(): boolean {
     return !!this.getCurrentUser();
-  }
+  },
+
+  // Add new getUserById method
+  getUserById(userId: string): User | null {
+    const users = this.getUsers();
+    return users.find(user => user.id === userId) || null;
+  },
 }; 
