@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { moderationService } from '../services/moderationService';
 
 interface AuthContextType {
   user: any;
@@ -23,8 +24,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser = authService.getCurrentUser();
     setUser(currentUser);
     setIsAuthenticated(authService.isAuthenticated());
+    
     // Check if user is admin
-    setIsAdmin(currentUser?.email === 'teckmillion17@gmail.com');
+    if (currentUser) {
+      const isUserAdmin = currentUser.email === 'teckmillion17@gmail.com' || 
+                         moderationService.getModeratorRole(currentUser.id) === 'admin';
+      setIsAdmin(isUserAdmin);
+
+      // If this is the first user and no admins exist, make them an admin
+      const allModerators = moderationService.getModerators();
+      if (allModerators.length === 0) {
+        moderationService.assignModerator(currentUser.id, 'admin', currentUser.id);
+        setIsAdmin(true);
+      }
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
