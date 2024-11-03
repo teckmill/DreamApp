@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Plus, X } from 'lucide-react';
+import { ModerationProps } from '../../types/moderation';
 
 interface DreamGroup {
   id: string;
@@ -12,7 +13,9 @@ interface DreamGroup {
   isPrivate: boolean;
 }
 
-export default function Groups() {
+interface GroupsProps extends ModerationProps {}
+
+export default function Groups({ onModAction, isModerator }: GroupsProps) {
   const [groups, setGroups] = useState<DreamGroup[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroup, setNewGroup] = useState({

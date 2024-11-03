@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Trophy, Users, Clock, Plus, X } from 'lucide-react';
+import { ModerationProps } from '../../types/moderation';
 
 interface DreamEvent {
   id: string;
@@ -15,7 +16,9 @@ interface DreamEvent {
   tags: string[];
 }
 
-export default function Events() {
+interface EventsProps extends ModerationProps {}
+
+export default function Events({ onModAction, isModerator }: EventsProps) {
   const [events, setEvents] = useState<DreamEvent[]>([
     {
       id: '1',

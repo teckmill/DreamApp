@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Filter, Search, TrendingUp } from 'lucide-react';
+import { ModerationProps } from '../../types/moderation';
 
 interface DreamCategory {
   id: string;
@@ -10,7 +11,9 @@ interface DreamCategory {
   trendingTags: string[];
 }
 
-export default function Categories() {
+interface CategoriesProps extends ModerationProps {}
+
+export default function Categories({ onModAction, isModerator }: CategoriesProps) {
   const [categories, setCategories] = useState<DreamCategory[]>([
     {
       id: '1',

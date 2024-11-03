@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Brain, MessageCircle, ThumbsUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ReputationBadge from '../../components/community/ReputationBadge';
+import { ModerationProps } from '../../types/moderation';
 
 interface InterpretationRequest {
   id: string;
@@ -29,7 +30,9 @@ interface InterpretationResponse {
   };
 }
 
-export default function Interpretations() {
+interface InterpretationsProps extends ModerationProps {}
+
+export default function Interpretations({ onModAction, isModerator }: InterpretationsProps) {
   const { user } = useAuth();
   const [requests, setRequests] = useState<InterpretationRequest[]>([]);
   const [newRequest, setNewRequest] = useState('');

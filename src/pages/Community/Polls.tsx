@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart2, PieChart, Users, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { ModerationProps } from '../../types/moderation';
 
 interface Poll {
   id: string;
@@ -18,7 +19,9 @@ interface Poll {
   category: 'dream-patterns' | 'sleep-habits' | 'techniques' | 'experiences';
 }
 
-export default function Polls() {
+interface PollsProps extends ModerationProps {}
+
+export default function Polls({ onModAction, isModerator }: PollsProps) {
   const { user } = useAuth();
   const [polls, setPolls] = useState<Poll[]>([
     {

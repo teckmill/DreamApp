@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Book, Star, Users, MessageCircle, Award, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ReputationBadge from '../../components/community/ReputationBadge';
+import { ModerationProps } from '../../types/moderation';
 
 interface Mentor {
   id: string;
@@ -32,7 +33,9 @@ interface MentorshipRequest {
   goals: string[];
 }
 
-export default function Mentorship() {
+interface MentorshipProps extends ModerationProps {}
+
+export default function Mentorship({ onModAction, isModerator }: MentorshipProps) {
   const { user } = useAuth();
   const [mentors, setMentors] = useState<Mentor[]>([
     {
