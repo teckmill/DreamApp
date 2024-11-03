@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Filter, Download, Search, AlertTriangle, Shield, User, Settings } from 'lucide-react';
+import { moderationService } from '../../services/moderationService';
 
 interface ActivityLog {
   id: string;
@@ -35,22 +36,23 @@ export default function ActivityLogs() {
   const loadLogs = async () => {
     setLoading(true);
     try {
-      // In a real app, fetch from backend
-      const mockLogs: ActivityLog[] = [
-        {
-          id: '1',
-          userId: 'user123',
-          action: 'LOGIN_ATTEMPT',
-          details: 'Failed login attempt',
-          ipAddress: '192.168.1.1',
-          userAgent: 'Mozilla/5.0...',
-          timestamp: new Date(),
-          severity: 'medium',
-          category: 'auth'
-        },
-        // Add more mock logs...
-      ];
-      setLogs(mockLogs);
+      // Get moderation logs
+      const modLogs = moderationService.getModLogs();
+      
+      // Convert mod logs to activity logs format
+      const activityLogs: ActivityLog[] = modLogs.map(log => ({
+        id: log.id,
+        userId: log.userId,
+        action: log.action,
+        details: log.reason,
+        ipAddress: 'N/A',
+        userAgent: 'N/A',
+        timestamp: new Date(log.createdAt),
+        severity: log.action === 'ban' ? 'high' : 'medium',
+        category: 'admin'
+      }));
+
+      setLogs(activityLogs);
     } catch (error) {
       console.error('Error loading logs:', error);
     } finally {
@@ -97,34 +99,9 @@ export default function ActivityLogs() {
     setFilteredLogs(filtered);
   };
 
-  const exportLogs = () => {
-    const csv = [
-      ['Timestamp', 'User ID', 'Action', 'Details', 'IP Address', 'Severity', 'Category'],
-      ...filteredLogs.map(log => [
-        new Date(log.timestamp).toISOString(),
-        log.userId,
-        log.action,
-        log.details,
-        log.ipAddress,
-        log.severity,
-        log.category
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `activity-logs-${new Date().toISOString()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-6">
-      {/* Filters and Search */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-4">
         <div className="flex-1">
           <div className="relative">
@@ -173,14 +150,6 @@ export default function ActivityLogs() {
           <option value="30d">Last 30 Days</option>
           <option value="all">All Time</option>
         </select>
-
-        <button
-          onClick={exportLogs}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
-        >
-          <Download className="h-4 w-4" />
-          <span>Export</span>
-        </button>
       </div>
 
       {/* Logs Table */}
