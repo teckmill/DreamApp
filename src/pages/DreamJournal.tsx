@@ -64,7 +64,9 @@ export default function DreamJournal() {
       setShowAnalysis(true);
       
       // Use an analysis credit (premium users don't use credits)
-      rewardService.useAnalysisCredit(user.id);
+      if (!userRewards.premiumTimeLeft) {
+        rewardService.useAnalysisCredit(user.id);
+      }
 
       // Scroll to analysis section
       const analysisSection = document.getElementById('analysis-section');
@@ -73,6 +75,7 @@ export default function DreamJournal() {
       }
     } catch (error) {
       console.error('Analysis error:', error);
+      alert('Failed to analyze dream. Please try again.');
     }
   };
 
@@ -350,11 +353,7 @@ export default function DreamJournal() {
             Dream Analysis
           </h2>
           
-          <div className="space-y-4">
-            <div className="text-center text-4xl mb-4">
-              {dreamAnalyzer.generateDreamArtwork(analysis.themes)}
-            </div>
-            
+          <div className="space-y-6">
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white mb-2">Sentiment</h3>
               <p className="text-gray-600 dark:text-gray-300">
