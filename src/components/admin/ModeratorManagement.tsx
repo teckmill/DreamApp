@@ -11,7 +11,8 @@ export default function ModeratorManagement() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const canAssignMods = moderationService.canAssignModerators(user.id);
+  const canAssignMods = user?.email === 'teckmillion17@gmail.com' || 
+                       moderationService.getModeratorRole(user?.id) === 'admin';
 
   useEffect(() => {
     loadModerators();
@@ -23,26 +24,44 @@ export default function ModeratorManagement() {
 
   const handleAssignModerator = async () => {
     try {
-      if (!selectedUser) return;
+      if (!selectedUser) {
+        setError('Please enter a user ID');
+        return;
+      }
       
       await moderationService.assignModerator(selectedUser, selectedRole, user.id);
       setSuccess('Moderator assigned successfully');
       setSelectedUser('');
       loadModerators();
+      
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
       setError(error.message);
+      setTimeout(() => setError(null), 3000);
     }
   };
 
   const handleRemoveModerator = async (userId: string) => {
     try {
+      if (userId === user.id) {
+        setError("You can't remove yourself as a moderator");
+        return;
+      }
+
       await moderationService.removeModerator(userId, user.id);
       setSuccess('Moderator removed successfully');
       loadModerators();
+      
+      setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
       setError(error.message);
+      setTimeout(() => setError(null), 3000);
     }
   };
+
+  if (user === null) {
+    return <div>Loading...</div>;
+  }
 
   if (!canAssignMods) {
     return (
@@ -125,12 +144,14 @@ export default function ModeratorManagement() {
                 </div>
               </div>
               
-              <button
-                onClick={() => handleRemoveModerator(mod.userId)}
-                className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
-              >
-                <UserMinus className="h-5 w-5" />
-              </button>
+              {mod.userId !== user.id && (
+                <button
+                  onClick={() => handleRemoveModerator(mod.userId)}
+                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
+                >
+                  <UserMinus className="h-5 w-5" />
+                </button>
+              )}
             </div>
           ))}
 
