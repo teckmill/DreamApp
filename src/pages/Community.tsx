@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Bell, MessageCircle, Users, Star, Compass, TrendingUp, BookOpen } from 'lucide-react';
+import { 
+  Bell, 
+  MessageCircle, 
+  Users, 
+  Star, 
+  Compass, 
+  TrendingUp, 
+  BookOpen,
+  Calendar as CalendarIcon,
+  BarChart as BarChartIcon,
+  UserPlus as MentorIcon
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { moderationService } from '../services/moderationService';
 import Categories from './Community/Categories';
@@ -14,6 +25,35 @@ export default function Community() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('discover');
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Add handleModAction function
+  const handleModAction = async (contentId: string, contentType: string, action: string) => {
+    try {
+      switch (action) {
+        case 'pin':
+          await moderationService.pinContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content pinned successfully' });
+          break;
+        case 'unpin':
+          await moderationService.unpinContent(contentId, contentType as any, user.id);
+          setMessage({ type: 'success', text: 'Content unpinned successfully' });
+          break;
+        // ... rest of the switch cases remain the same
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message });
+    }
+  };
+
+  const mainTabs = [
+    { id: 'discover', label: 'Discover', icon: Compass },
+    { id: 'categories', label: 'Categories', icon: BookOpen },
+    { id: 'interpretations', label: 'Dream Analysis', icon: Star },
+    { id: 'groups', label: 'Dream Circles', icon: Users },
+    { id: 'events', label: 'Events', icon: CalendarIcon },
+    { id: 'polls', label: 'Community Polls', icon: BarChartIcon },
+    { id: 'mentorship', label: 'Mentorship', icon: MentorIcon }
+  ];
 
   // Featured content for the Discover section
   const featuredContent = {
@@ -30,16 +70,6 @@ export default function Community() {
       { id: '2', title: 'Dream Journaling Tips', date: '2024-02-18', participants: 15 }
     ]
   };
-
-  const mainTabs = [
-    { id: 'discover', label: 'Discover', icon: Compass },
-    { id: 'categories', label: 'Categories', icon: BookOpen },
-    { id: 'interpretations', label: 'Dream Analysis', icon: Star },
-    { id: 'groups', label: 'Dream Circles', icon: Users },
-    { id: 'events', label: 'Events', icon: Calendar },
-    { id: 'polls', label: 'Community Polls', icon: BarChart },
-    { id: 'mentorship', label: 'Mentorship', icon: Mentor }
-  ];
 
   const renderDiscoverSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -91,7 +121,7 @@ export default function Community() {
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Upcoming Events</h3>
-          <Calendar className="h-5 w-5 text-indigo-500" />
+          <CalendarIcon className="h-5 w-5 text-indigo-500" />
         </div>
         <div className="space-y-4">
           {featuredContent.upcomingEvents.map(event => (
