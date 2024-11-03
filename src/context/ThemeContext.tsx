@@ -1,27 +1,45 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
-
 interface ThemeContextType {
-  theme: Theme;
+  theme: 'light' | 'dark';
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return (savedTheme as Theme) || 
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    () => (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
+  );
 
   useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
     localStorage.setItem('theme', theme);
+
+    // Add custom CSS variables for dark theme
     if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      root.style.setProperty('--bg-primary', '#0F172A'); // Deep blue-gray
+      root.style.setProperty('--bg-secondary', '#1E293B'); // Lighter blue-gray
+      root.style.setProperty('--bg-tertiary', '#334155'); // Even lighter blue-gray
+      root.style.setProperty('--text-primary', '#E2E8F0'); // Light gray
+      root.style.setProperty('--text-secondary', '#94A3B8'); // Muted gray
+      root.style.setProperty('--accent-primary', '#818CF8'); // Indigo
+      root.style.setProperty('--accent-secondary', '#6366F1'); // Darker indigo
+      root.style.setProperty('--border-color', '#2D3748'); // Dark blue-gray
+      root.style.setProperty('--hover-bg', '#2D3748'); // Dark blue-gray for hover
     } else {
-      document.documentElement.classList.remove('dark');
+      // Reset to default light theme variables
+      root.style.removeProperty('--bg-primary');
+      root.style.removeProperty('--bg-secondary');
+      root.style.removeProperty('--bg-tertiary');
+      root.style.removeProperty('--text-primary');
+      root.style.removeProperty('--text-secondary');
+      root.style.removeProperty('--accent-primary');
+      root.style.removeProperty('--accent-secondary');
+      root.style.removeProperty('--border-color');
+      root.style.removeProperty('--hover-bg');
     }
   }, [theme]);
 
