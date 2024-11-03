@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Shield, Ban, Trash2, Edit, Eye, Gift } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { moderationService } from '../../services/moderationService';
@@ -11,6 +11,41 @@ export default function UserManagement() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = () => {
+    const allUsers = JSON.parse(localStorage.getItem('dreamscape_users') || '[]');
+    setUsers(allUsers);
+  };
+
+  const filteredUsers = users.filter(user => {
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      if (!user.username.toLowerCase().includes(searchLower) &&
+          !user.email.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+    }
+
+    if (filterRole !== 'all') {
+      const userRole = moderationService.getModeratorRole(user.id) || 'basic';
+      if (userRole !== filterRole) return false;
+    }
+
+    if (filterStatus !== 'all') {
+      const isBanned = moderationService.isUserBanned(user.id);
+      const isMuted = moderationService.isUserMuted(user.id);
+      if (filterStatus === 'banned' && !isBanned) return false;
+      if (filterStatus === 'muted' && !isMuted) return false;
+      if (filterStatus === 'active' && (isBanned || isMuted)) return false;
+    }
+
+    return true;
+  });
 
   const handleUserAction = async (userId: string, action: string) => {
     switch(action) {
@@ -96,7 +131,67 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {/* User rows */}
+            {filteredUsers.map(user => (
+              <tr key={user.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">
+                        {user.username}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    {moderationService.getModeratorRole(user.id) || 'Basic'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    moderationService.isUserBanned(user.id)
+                      ? 'bg-red-100 text-red-700'
+                      : moderationService.isUserMuted(user.id)
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {moderationService.isUserBanned(user.id)
+                      ? 'Banned'
+                      : moderationService.isUserMuted(user.id)
+                      ? 'Muted'
+                      : 'Active'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(user.lastActive || Date.now()).toLocaleString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => handleUserAction(user.id, 'ban')}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <Ban className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleUserAction(user.id, 'promote')}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      <Shield className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedUser(user)}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

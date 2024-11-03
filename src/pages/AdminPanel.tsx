@@ -56,9 +56,9 @@ export default function AdminPanel() {
     { id: 'overview', label: 'Dashboard', icon: Database },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'content', label: 'Content Moderation', icon: Flag },
-    { id: 'subscriptions', label: 'Subscriptions', icon: Gift },
+    { id: 'logs', label: 'Activity Logs', icon: Activity },
+    { id: 'mods', label: 'Moderators', icon: Shield },
     { id: 'security', label: 'Security', icon: Lock },
-    { id: 'notifications', label: 'Notifications', icon: BellRing },
     { id: 'settings', label: 'System Settings', icon: Settings }
   ];
 
