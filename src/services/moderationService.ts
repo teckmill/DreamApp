@@ -192,5 +192,20 @@ export const moderationService = {
   canManageReports(userId: string): boolean {
     const moderator = this.getModerators().find(mod => mod.userId === userId);
     return moderator?.permissions.canManageReports || false;
+  },
+
+  banUser(userId: string): void {
+    this.createModLog(userId, 'ban', 'User banned by admin', 'admin');
+  },
+
+  unbanUser(userId: string): void {
+    const logs = this.getModLogs();
+    const updatedLogs = logs.map(log => {
+      if (log.userId === userId && log.action === 'ban' && (!log.expiresAt || new Date(log.expiresAt) > new Date())) {
+        return { ...log, expiresAt: new Date() };
+      }
+      return log;
+    });
+    localStorage.setItem('moderation_logs', JSON.stringify(updatedLogs));
   }
 }; 
