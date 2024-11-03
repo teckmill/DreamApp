@@ -1,8 +1,8 @@
 import { authService } from './authService';
 
-export type ContentType = 'dream' | 'comment' | 'interpretation' | 'poll';
+export type ContentType = 'dream' | 'comment' | 'interpretation' | 'poll' | 'event' | 'group';
 export type ReportReason = 'inappropriate' | 'spam' | 'harassment' | 'misinformation' | 'other';
-export type ModAction = 'warn' | 'mute' | 'ban' | 'delete';
+export type ModAction = 'warn' | 'mute' | 'ban' | 'delete' | 'lock' | 'pin' | 'unpin';
 export type ModeratorRole = 'admin' | 'moderator' | 'community_manager';
 
 interface Report {
@@ -213,5 +213,115 @@ export const moderationService = {
       return log;
     });
     localStorage.setItem('moderation_logs', JSON.stringify(updatedLogs));
+  },
+
+  canModerateContent(userId: string): boolean {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return !!moderator || this.isAdmin(userId);
+  },
+
+  isAdmin(userId: string): boolean {
+    const user = authService.getUserById(userId);
+    return user?.email === 'teckmillion17@gmail.com' || 
+           this.getModeratorRole(userId) === 'admin';
+  },
+
+  canManageEvents(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  canManageGroups(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  canPinContent(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  canLockContent(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  canDeleteContent(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  canManagePolls(userId: string): boolean {
+    return this.canModerateContent(userId);
+  },
+
+  pinContent(contentId: string, contentType: ContentType, moderatorId: string): void {
+    if (!this.canPinContent(moderatorId)) {
+      throw new Error('No permission to pin content');
+    }
+    // Implementation for pinning content
+  },
+
+  unpinContent(contentId: string, contentType: ContentType, moderatorId: string): void {
+    if (!this.canPinContent(moderatorId)) {
+      throw new Error('No permission to unpin content');
+    }
+    // Implementation for unpinning content
+  },
+
+  lockContent(contentId: string, contentType: ContentType, moderatorId: string): void {
+    if (!this.canLockContent(moderatorId)) {
+      throw new Error('No permission to lock content');
+    }
+    // Implementation for locking content
+  },
+
+  unlockContent(contentId: string, contentType: ContentType, moderatorId: string): void {
+    if (!this.canLockContent(moderatorId)) {
+      throw new Error('No permission to unlock content');
+    }
+    // Implementation for unlocking content
+  },
+
+  deleteContent(contentId: string, contentType: ContentType, moderatorId: string): void {
+    if (!this.canDeleteContent(moderatorId)) {
+      throw new Error('No permission to delete content');
+    }
+    // Implementation for deleting content
+  },
+
+  manageEvent(eventId: string, action: 'approve' | 'reject' | 'cancel', moderatorId: string): void {
+    if (!this.canManageEvents(moderatorId)) {
+      throw new Error('No permission to manage events');
+    }
+    // Implementation for event management
+  },
+
+  manageGroup(groupId: string, action: 'approve' | 'archive' | 'delete', moderatorId: string): void {
+    if (!this.canManageGroups(moderatorId)) {
+      throw new Error('No permission to manage groups');
+    }
+    // Implementation for group management
+  },
+
+  managePoll(pollId: string, action: 'approve' | 'close' | 'delete', moderatorId: string): void {
+    if (!this.canManagePolls(moderatorId)) {
+      throw new Error('No permission to manage polls');
+    }
+    // Implementation for poll management
+  },
+
+  getAvailableActions(userId: string): ModAction[] {
+    const actions: ModAction[] = [];
+    
+    if (this.canModerateContent(userId)) {
+      actions.push('warn', 'mute', 'delete', 'lock', 'pin', 'unpin');
+    }
+    
+    if (this.canBanUsers(userId)) {
+      actions.push('ban');
+    }
+    
+    return actions;
+  },
+
+  hasPermission(userId: string, permission: keyof Moderator['permissions']): boolean {
+    const moderator = this.getModerators().find(mod => mod.userId === userId);
+    return moderator?.permissions[permission] || false;
   }
 }; 
