@@ -37,6 +37,7 @@ export default function DreamJournal() {
   const [clarity, setClarity] = useState(3);
   const [isRecurring, setIsRecurring] = useState(false);
   const [category, setCategory] = useState('general');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // In a real app, this would be fetched from a backend
   const [dreams, setDreams] = useState<DreamEntry[]>(() => {
@@ -59,7 +60,7 @@ export default function DreamJournal() {
     }
 
     try {
-      // Add loading state
+      setIsAnalyzing(true);
       setShowAnalysis(true);
       
       // Wait for analysis result
@@ -80,6 +81,8 @@ export default function DreamJournal() {
       console.error('Analysis error:', error);
       alert('Failed to analyze dream. Please try again.');
       setShowAnalysis(false);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -321,10 +324,15 @@ export default function DreamJournal() {
           </button>
           <button
             onClick={handleAnalyze}
-            className="inline-flex items-center px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800/30 transition-colors"
+            disabled={isAnalyzing}
+            className={`inline-flex items-center px-4 py-2 ${
+              isAnalyzing 
+                ? 'bg-gray-300 cursor-not-allowed' 
+                : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800/30'
+            } rounded-lg transition-colors`}
           >
             <Brain className="h-4 w-4 mr-2" />
-            Analyze Dream
+            {isAnalyzing ? 'Analyzing...' : 'Analyze Dream'}
           </button>
           {editingDream && (
             <button
@@ -351,48 +359,59 @@ export default function DreamJournal() {
         </div>
       </div>
 
-      {showAnalysis && analysis && (
+      {showAnalysis && (
         <div id="analysis-section" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 mt-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             Dream Analysis
           </h2>
           
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">Sentiment</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                {analysis.sentiment.label} ({analysis.sentiment.emotions.join(', ')})
-              </p>
+          {isAnalyzing ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-300">Analyzing your dream...</p>
             </div>
+          ) : analysis ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">Sentiment</h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {analysis.sentiment.label} ({analysis.sentiment.emotions.join(', ')})
+                </p>
+              </div>
 
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">Themes</h3>
-              <div className="flex flex-wrap gap-2">
-                {analysis.themes.map((theme) => (
-                  <span
-                    key={theme}
-                    className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
-                  >
-                    {theme}
-                  </span>
-                ))}
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">Themes</h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.themes.map((theme) => (
+                    <span
+                      key={theme}
+                      className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm rounded-full"
+                    >
+                      {theme}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">Interpretation</h3>
+                <p className="text-gray-600 dark:text-gray-300">{analysis.interpretation}</p>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">Recommendations</h3>
+                <ul className="list-disc list-inside text-gray-600 dark:text-gray-300">
+                  {analysis.recommendations.map((rec, index) => (
+                    <li key={index}>{rec}</li>
+                  ))}
+                </ul>
               </div>
             </div>
-
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">Interpretation</h3>
-              <p className="text-gray-600 dark:text-gray-300">{analysis.interpretation}</p>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">Recommendations</h3>
-              <ul className="list-disc list-inside text-gray-600 dark:text-gray-300">
-                {analysis.recommendations.map((rec, index) => (
-                  <li key={index}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-300 text-center py-4">
+              No analysis available
+            </p>
+          )}
         </div>
       )}
 
