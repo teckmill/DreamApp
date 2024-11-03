@@ -186,16 +186,24 @@ export const dreamAnalyzer = {
           'HTTP-Referer': window.location.origin,
         },
         body: JSON.stringify({
-          model: 'mistralai/mistral-7b-instruct', // Free model
+          model: 'mistralai/mistral-7b-instruct',
           messages: [
             {
               role: 'system',
-              content: `You are a dream analysis expert. Analyze dreams and provide:
-                1. Sentiment and emotions
-                2. Main themes
-                3. Interpretation
-                4. Recommendations
-                Format the response as JSON with these keys: sentiment, themes, interpretation, recommendations`
+              content: `You are a dream analysis expert. Analyze the dream and provide:
+                1. Sentiment (positive/negative/neutral) and specific emotions detected
+                2. Main themes (3-5 key themes)
+                3. A detailed interpretation (2-3 paragraphs)
+                4. Specific recommendations (at least 3 bullet points)
+                
+                Format the response as JSON with these exact keys:
+                {
+                  "sentiment": "positive/negative/neutral",
+                  "emotions": ["emotion1", "emotion2", ...],
+                  "themes": ["theme1", "theme2", ...],
+                  "interpretation": "detailed interpretation...",
+                  "recommendations": ["recommendation1", "recommendation2", ...]
+                }`
             },
             {
               role: 'user',
@@ -212,27 +220,27 @@ export const dreamAnalyzer = {
       const data = await response.json();
       const analysis = JSON.parse(data.choices[0].message.content);
 
-      // Format the response to match our interface
+      // Format and validate the response
       return {
         sentiment: {
-          score: analysis.sentiment.includes('positive') ? 1 : 
-                 analysis.sentiment.includes('negative') ? -1 : 0,
-          label: analysis.sentiment.includes('positive') ? 'positive' : 
-                 analysis.sentiment.includes('negative') ? 'negative' : 'neutral',
+          score: analysis.sentiment === 'positive' ? 1 : 
+                 analysis.sentiment === 'negative' ? -1 : 0,
+          label: analysis.sentiment || 'neutral',
           emotions: Array.isArray(analysis.emotions) ? analysis.emotions : []
         },
         themes: Array.isArray(analysis.themes) ? analysis.themes : [],
-        interpretation: analysis.interpretation || 'No interpretation available',
-        recommendations: Array.isArray(analysis.recommendations) ? analysis.recommendations : []
+        interpretation: analysis.interpretation || 'No interpretation available.',
+        recommendations: Array.isArray(analysis.recommendations) ? 
+          analysis.recommendations.filter(r => r && typeof r === 'string') : 
+          ['Record more details about your dream', 'Reflect on the emotions you felt', 'Look for patterns in your dreams']
       };
     } catch (error) {
       console.error('Dream analysis error:', error);
-      // Fallback to basic analysis if API fails
       return this.fallbackAnalysis(text);
     }
   },
 
-  // Fallback analysis in case the API fails
+  // Enhanced fallback analysis
   fallbackAnalysis(text: string): DreamAnalysis {
     const textLower = text.toLowerCase();
     
@@ -241,11 +249,19 @@ export const dreamAnalyzer = {
     const negativeWords = ['scary', 'fear', 'nightmare', 'anxiety', 'stress'];
     
     let sentimentScore = 0;
+    const emotions = [];
+
     positiveWords.forEach(word => {
-      if (textLower.includes(word)) sentimentScore++;
+      if (textLower.includes(word)) {
+        sentimentScore++;
+        emotions.push(word);
+      }
     });
     negativeWords.forEach(word => {
-      if (textLower.includes(word)) sentimentScore--;
+      if (textLower.includes(word)) {
+        sentimentScore--;
+        emotions.push(word);
+      }
     });
 
     return {
@@ -253,13 +269,15 @@ export const dreamAnalyzer = {
         score: sentimentScore,
         label: sentimentScore > 0 ? 'positive' : 
                sentimentScore < 0 ? 'negative' : 'neutral',
-        emotions: []
+        emotions: emotions
       },
-      themes: ['general'],
-      interpretation: 'Unable to perform detailed analysis at this time.',
+      themes: ['personal experience', 'emotions', 'daily life'],
+      interpretation: 'This dream appears to reflect your current life experiences and emotions. Consider how the elements in your dream might relate to your waking life.',
       recommendations: [
-        'Record more details about this dream in your journal',
-        'Reflect on how this dream relates to your current life situation'
+        'Write down any specific emotions or feelings you experienced during the dream',
+        'Note any recurring symbols or patterns that stood out to you',
+        'Consider how this dream might relate to your current life situation',
+        'Share your dream with others to gain different perspectives'
       ]
     };
   }
