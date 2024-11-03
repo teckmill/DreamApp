@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, UserPlus, UserMinus, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { moderationService, ModeratorRole } from '../../services/moderationService';
 
 export default function ModeratorManagement() {
   const { user } = useAuth();
+  const [moderators, setModerators] = useState(moderationService.getModerators());
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState<ModeratorRole>('moderator');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const moderators = moderationService.getModerators();
   const canAssignMods = moderationService.canAssignModerators(user.id);
+
+  useEffect(() => {
+    loadModerators();
+  }, []);
+
+  const loadModerators = () => {
+    setModerators(moderationService.getModerators());
+  };
 
   const handleAssignModerator = async () => {
     try {
@@ -20,7 +28,8 @@ export default function ModeratorManagement() {
       await moderationService.assignModerator(selectedUser, selectedRole, user.id);
       setSuccess('Moderator assigned successfully');
       setSelectedUser('');
-    } catch (error) {
+      loadModerators();
+    } catch (error: any) {
       setError(error.message);
     }
   };
@@ -29,7 +38,8 @@ export default function ModeratorManagement() {
     try {
       await moderationService.removeModerator(userId, user.id);
       setSuccess('Moderator removed successfully');
-    } catch (error) {
+      loadModerators();
+    } catch (error: any) {
       setError(error.message);
     }
   };
@@ -49,6 +59,7 @@ export default function ModeratorManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Assign New Moderator */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4">Assign New Moderator</h2>
         
@@ -72,7 +83,7 @@ export default function ModeratorManagement() {
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
               placeholder="Enter user ID"
-              className="w-full p-2 border rounded-lg"
+              className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
 
@@ -81,7 +92,7 @@ export default function ModeratorManagement() {
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value as ModeratorRole)}
-              className="w-full p-2 border rounded-lg"
+              className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
             >
               <option value="moderator">Moderator</option>
               <option value="community_manager">Community Manager</option>
@@ -99,6 +110,7 @@ export default function ModeratorManagement() {
         </div>
       </div>
 
+      {/* Current Moderators */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4">Current Moderators</h2>
         
@@ -107,7 +119,7 @@ export default function ModeratorManagement() {
             <div key={mod.userId} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div>
                 <div className="font-medium">{mod.userId}</div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 flex items-center">
                   <Shield className="h-4 w-4 inline mr-1" />
                   {mod.role}
                 </div>
@@ -121,6 +133,10 @@ export default function ModeratorManagement() {
               </button>
             </div>
           ))}
+
+          {moderators.length === 0 && (
+            <p className="text-center text-gray-500">No moderators assigned yet.</p>
+          )}
         </div>
       </div>
     </div>
