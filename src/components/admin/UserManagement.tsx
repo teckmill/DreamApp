@@ -3,6 +3,7 @@ import { Search, Filter, Shield, Ban, Trash2, Edit, Eye, Gift } from 'lucide-rea
 import { useAuth } from '../../context/AuthContext';
 import { moderationService } from '../../services/moderationService';
 import { rewardService } from '../../services/rewardService';
+import styles from '../../styles/UserManagement.module.css';
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -170,23 +171,60 @@ export default function UserManagement() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleUserAction(user.id, 'ban')}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Ban className="h-5 w-5" />
-                    </button>
+                    {moderationService.isUserBanned(user.id) ? (
+                      <button
+                        onClick={() => handleUserAction(user.id, 'unban')}
+                        className={`text-green-600 hover:text-green-900 ${styles.tooltip}`}
+                        title="Unban User"
+                      >
+                        <Ban className="h-5 w-5" />
+                        <span className="sr-only">Unban User</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleUserAction(user.id, 'ban')}
+                        className={`text-red-600 hover:text-red-900 ${styles.tooltip}`}
+                        title="Ban User"
+                      >
+                        <Ban className="h-5 w-5" />
+                        <span className="sr-only">Ban User</span>
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => handleUserAction(user.id, 'promote')}
-                      className="text-indigo-600 hover:text-indigo-900"
+                      className={`text-indigo-600 hover:text-indigo-900 ${styles.tooltip}`}
+                      title="Promote to Moderator"
                     >
                       <Shield className="h-5 w-5" />
+                      <span className="sr-only">Promote to Moderator</span>
                     </button>
+
+                    <button
+                      onClick={() => handleUserAction(user.id, 'grant_premium')}
+                      className={`text-yellow-600 hover:text-yellow-900 ${styles.tooltip}`}
+                      title="Grant Premium Access"
+                    >
+                      <Gift className="h-5 w-5" />
+                      <span className="sr-only">Grant Premium Access</span>
+                    </button>
+
                     <button
                       onClick={() => setSelectedUser(user)}
-                      className="text-gray-600 hover:text-gray-900"
+                      className={`text-gray-600 hover:text-gray-900 ${styles.tooltip}`}
+                      title="View User Details"
                     >
                       <Eye className="h-5 w-5" />
+                      <span className="sr-only">View User Details</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleUserAction(user.id, 'delete')}
+                      className={`text-red-600 hover:text-red-900 ${styles.tooltip}`}
+                      title="Delete User"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                      <span className="sr-only">Delete User</span>
                     </button>
                   </div>
                 </td>
