@@ -24,6 +24,7 @@ export default function AdUnit({
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [canSkip, setCanSkip] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -46,10 +47,9 @@ export default function AdUnit({
       if (onComplete) {
         await onComplete();
       }
-      // Close almost immediately after completion
       setTimeout(() => {
         setShowAd(false);
-      }, 100); // Just enough time to show the completion checkmark
+      }, 100);
     } catch (error) {
       console.error('Error completing ad:', error);
       setIsCompleted(false);
@@ -65,15 +65,18 @@ export default function AdUnit({
     setIsPlaying(true);
     const interval = setInterval(() => {
       setVideoProgress(prev => {
-        const newProgress = prev + 4; // Faster progress (4% instead of 2%)
+        const newProgress = prev + 4;
         if (newProgress >= 100) {
           clearInterval(interval);
           handleVideoComplete();
           return 100;
         }
+        if (newProgress >= 50 && !canSkip) {
+          setCanSkip(true);
+        }
         return newProgress;
       });
-    }, 25); // Much faster interval (25ms instead of 50ms)
+    }, 100);
     setIntervalId(interval);
   };
 
@@ -82,6 +85,12 @@ export default function AdUnit({
       clearInterval(intervalId);
     }
     setShowAd(false);
+  };
+
+  const handleSkip = () => {
+    if (canSkip) {
+      handleVideoComplete();
+    }
   };
 
   if (!showAd) {
@@ -124,7 +133,9 @@ export default function AdUnit({
                 />
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-                {isPlaying ? 'Watching video...' : 
+                {isPlaying ? (
+                  canSkip ? 'You can now skip the video' : 'Please watch for 5 seconds...'
+                ) : 
                  isProcessing ? 'Processing...' : 
                  isCompleted ? 'Complete!' : 
                  'Ready to watch'}
@@ -136,6 +147,14 @@ export default function AdUnit({
                 className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 Start Watching
+              </button>
+            )}
+            {isPlaying && canSkip && !isCompleted && (
+              <button
+                onClick={handleSkip}
+                className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Skip & Claim Reward
               </button>
             )}
           </div>
