@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
+import { Bell, MessageCircle, Users, Star } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import Categories from './Community/Categories';
 import Interpretations from './Community/Interpretations';
 import Polls from './Community/Polls';
@@ -7,12 +8,31 @@ import Mentorship from './Community/Mentorship';
 import Events from './Community/Events';
 import Groups from './Community/Groups';
 import Guidelines from './Community/Guidelines';
-import { useAuth } from '../context/AuthContext';
-import { Bell, MessageCircle, Users, Star } from 'lucide-react';
 
 export default function Community() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('categories');
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'categories':
+        return <Categories />;
+      case 'interpretations':
+        return <Interpretations />;
+      case 'polls':
+        return <Polls />;
+      case 'mentorship':
+        return <Mentorship />;
+      case 'events':
+        return <Events />;
+      case 'groups':
+        return <Groups />;
+      case 'guidelines':
+        return <Guidelines />;
+      default:
+        return <Categories />;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -65,44 +85,39 @@ export default function Community() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-          <TabsList className="flex space-x-2 mb-6 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="interpretations">Interpretations</TabsTrigger>
-            <TabsTrigger value="polls">Polls</TabsTrigger>
-            <TabsTrigger value="mentorship">Mentorship</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-            <TabsTrigger value="guidelines">Guidelines</TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="categories">
-              <Categories />
-            </TabsContent>
-            <TabsContent value="interpretations">
-              <Interpretations />
-            </TabsContent>
-            <TabsContent value="polls">
-              <Polls />
-            </TabsContent>
-            <TabsContent value="mentorship">
-              <Mentorship />
-            </TabsContent>
-            <TabsContent value="events">
-              <Events />
-            </TabsContent>
-            <TabsContent value="groups">
-              <Groups />
-            </TabsContent>
-            <TabsContent value="guidelines">
-              <Guidelines />
-            </TabsContent>
-          </div>
+      {/* Navigation Tabs */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex overflow-x-auto">
+            {[
+              { id: 'categories', label: 'Categories' },
+              { id: 'interpretations', label: 'Interpretations' },
+              { id: 'polls', label: 'Polls' },
+              { id: 'mentorship', label: 'Mentorship' },
+              { id: 'events', label: 'Events' },
+              { id: 'groups', label: 'Groups' },
+              { id: 'guidelines', label: 'Guidelines' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${
+                  activeTab === tab.id
+                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
-      </Tabs>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 }
